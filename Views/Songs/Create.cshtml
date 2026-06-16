@@ -1,0 +1,134 @@
+@model ChordSharp.Models.Song
+@{
+    ViewData["Title"] = "Add Song";
+}
+
+<div class="page-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">ADD SONG</h1>
+            <p class="page-subtitle">Paste your lyrics and we'll format them beautifully</p>
+        </div>
+    </div>
+
+    <div class="glass-card p-xl rounded-[1.5rem] border border-surface-variant">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-xl">
+                <!-- Column 1: Basic Info & Lyrics -->
+                <div class="flex flex-col gap-lg">
+                    <h2 class="font-headline-sm text-headline-sm text-primary border-b border-surface-variant pb-xs">Basic Info</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Title">Song Title</label>
+                        <div class="input-glow-wrapper">
+                            <input class="form-input" type="text" id="Title" name="Title" value="@Model?.Title" placeholder="e.g. Looking for an Answer" required />
+                        </div>
+                        <span asp-validation-for="Title" class="form-error"></span>
+                    </div>
+
+                    <div class="flex gap-md">
+                        <div class="form-group flex-1">
+                            <label asp-for="Artist" class="form-label">Artist (Optional)</label>
+                            <div class="input-glow-wrapper">
+                                <input asp-for="Artist" class="form-input" placeholder="e.g. The Beatles" />
+                            </div>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label asp-for="Album" class="form-label">Album (Optional)</label>
+                            <div class="input-glow-wrapper">
+                                <input asp-for="Album" class="form-input" placeholder="e.g. Abbey Road" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group flex-1 flex flex-col h-full">
+                        <label class="form-label" for="Lyrics">Lyrics</label>
+                        <div class="input-glow-wrapper flex-1 flex flex-col">
+                            <textarea class="form-textarea mono flex-1" id="Lyrics" name="Lyrics" required
+                                      placeholder="Paste your lyrics here...&#10;&#10;Use [Verse 1], [Chorus], [Bridge] etc. on their own line to mark sections."
+                                      style="min-height: 400px;">@Model?.Lyrics</textarea>
+                        </div>
+                        <span asp-validation-for="Lyrics" class="form-error"></span>
+                        <p class="form-hint mt-2">Use [Section Name] on its own line to mark sections.</p>
+                    </div>
+                </div>
+
+                <!-- Column 2: Media & Details -->
+                <div class="flex flex-col gap-lg">
+                    <h2 class="font-headline-sm text-headline-sm text-primary border-b border-surface-variant pb-xs">Media & Details</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Cover Image (Optional)</label>
+                        <div class="relative w-full h-64 sm:h-80 group cursor-pointer rounded-md overflow-hidden shadow-2xl border-2 border-dashed border-surface-variant hover:border-primary transition-colors bg-surface-variant/20 flex flex-col items-center justify-center gap-2 text-on-surface-variant" style="box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+                            <img id="create-cover-preview" src="#" alt="Preview" class="absolute inset-0 w-full h-full object-cover hidden z-10" />
+                            <div id="create-cover-placeholder" class="flex flex-col items-center justify-center gap-2 pointer-events-none relative z-0">
+                                <span class="material-symbols-outlined text-[48px] opacity-50">add_photo_alternate</span>
+                                <span class="text-sm opacity-60">Add Cover</span>
+                            </div>
+                            <input type="file" id="coverFile" name="coverFile" accept=".jpg,.jpeg,.png,.webp" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" onchange="previewCreateCover(this)" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="StrummingPattern">Strumming Pattern (Optional)</label>
+                        <div class="input-glow-wrapper">
+                            <input type="text" class="form-input mono text-sm" id="StrummingPattern" name="StrummingPattern" value="@Model?.StrummingPattern" placeholder="e.g. D D U U D U" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="SpotifyLink">Spotify Link (Optional)</label>
+                        <div class="input-glow-wrapper">
+                            <input type="text" class="form-input" id="SpotifyLink" name="SpotifyLink" value="@Model?.SpotifyLink" placeholder="https://open.spotify.com/track/..." />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="youtubeLinks">YouTube Links (Optional)</label>
+                        <div class="input-glow-wrapper">
+                            <textarea class="form-textarea text-sm" id="youtubeLinks" name="youtubeLinks" rows="3" placeholder="Tutorial | https://youtube.com/..."></textarea>
+                        </div>
+                        <p class="form-hint mt-1">Format: Label | URL (one per line)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="audioFile">Audio Track (Optional)</label>
+                        <div class="bg-black/20 p-4 rounded-lg border border-surface-variant flex flex-col gap-3">
+                            <div class="input-glow-wrapper">
+                                <input type="text" name="audioLabel" placeholder="Track Name (e.g. Acapella)" class="form-input text-sm" />
+                            </div>
+                            <input type="file" id="audioFile" name="audioFile" accept="audio/*" class="text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 cursor-pointer transition-colors" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-4 border-t border-surface-variant pt-xl mt-xl">
+                <a class="btn btn-ghost" asp-action="Index">Cancel</a>
+                <button class="btn btn-primary px-8" type="submit">Save & Add Chords →</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function previewCreateCover(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('create-cover-preview').src = e.target.result;
+                    document.getElementById('create-cover-preview').classList.remove('hidden');
+                    document.getElementById('create-cover-placeholder').classList.add('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                document.getElementById('create-cover-preview').src = "#";
+                document.getElementById('create-cover-preview').classList.add('hidden');
+                document.getElementById('create-cover-placeholder').classList.remove('hidden');
+            }
+        }
+    </script>
+}

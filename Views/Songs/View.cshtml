@@ -1,0 +1,1223 @@
+@model ChordSharp.Models.Song
+@{
+    ViewData["Title"] = Model.Title;
+    var hasCover = !string.IsNullOrEmpty(Model.CoverImageFileName);
+    var coverUrl = hasCover ? $"/uploads/covers/{Model.CoverImageFileName}" : "";
+}
+
+@if (hasCover)
+{
+    <!-- Fullscreen Blurred Cover Backdrop (Apple Music style) -->
+    <div id="cover-backdrop" style="position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;">
+        <img src="@coverUrl" alt="" style="width:100%;height:100%;object-fit:cover;filter:blur(60px) saturate(1.8) brightness(0.5);transform:scale(1.4);opacity:1;" />
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 100%);"></div>
+    </div>
+}
+
+<div class="h-screen flex flex-col overflow-hidden bg-transparent" style="position:relative;z-index:1;">
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 flex overflow-hidden bg-transparent">
+        
+        <!-- Left Column: SideNavBar (Editor) -->
+        <aside id="editor-sidebar" class="group/sidebar glass-card h-full w-64 flex flex-col shrink-0 transition-all duration-300 relative z-20 overflow-hidden" style="border-radius: 0; border-top: 0; border-bottom: 0; border-left: 0;">
+            <div class="view-mode-el p-md border-b border-outline-variant shrink-0 flex items-center justify-between">
+                <button onclick="toggleSidebar()" class="text-on-surface-variant hover:text-primary p-xs rounded transition-colors shrink-0">
+                    <span class="material-symbols-outlined" id="sidebar-toggle-icon">menu_open</span>
+                </button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-sm">
+                <!-- View Mode: Back to Dashboard -->
+                <a href="/Songs/Index" class="view-mode-el flex items-center gap-md px-md py-sm border-l-4 border-transparent text-on-surface-variant hover:bg-surface-container-high/50 transition-all duration-200" title="Back to Dashboard">
+                    <span class="material-symbols-outlined shrink-0">arrow_back</span>
+                    <span class="font-label-md text-label-md sidebar-text whitespace-nowrap">Back to Dashboard</span>
+                </a>
+                
+                <div class="view-mode-el h-px bg-outline-variant/30 my-2 mx-4"></div>
+
+                <button onclick="toggleEditMode()" id="toggle-edit-btn" class="view-mode-el flex w-full items-center gap-md px-md py-sm border-l-4 border-transparent text-on-surface-variant hover:bg-surface-container-high/50 transition-all duration-200" title="Toggle Edit Mode">
+                    <span class="material-symbols-outlined shrink-0">edit_note</span>
+                    <span class="font-label-md text-label-md sidebar-text whitespace-nowrap">Edit Mode</span>
+                </button>
+
+                <!-- Edit Mode: Back to View -->
+                <button onclick="toggleEditMode()" class="edit-mode-el hidden flex w-full items-center gap-md px-md py-sm border-l-4 border-transparent text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200" title="Back to View">
+                    <span class="material-symbols-outlined shrink-0">arrow_back</span>
+                    <span class="font-label-md text-label-md whitespace-nowrap">Back to View</span>
+                </button>
+                
+                <!-- Autoscroller (View Mode Only) -->
+                <div class="view-mode-el px-md py-sm mt-4">
+                    <div class="glass-card p-sm rounded-lg border border-surface-variant group-[.retracted]/sidebar:border-transparent group-[.retracted]/sidebar:bg-transparent group-[.retracted]/sidebar:p-0 flex flex-col gap-2">
+                        <div class="flex items-center justify-between mb-2 group-[.retracted]/sidebar:mb-0 group-[.retracted]/sidebar:justify-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest sidebar-text">Autoscroll</span>
+                            <button onclick="toggleAutoscroll()" id="autoscroll-btn" class="bg-surface-variant text-on-surface w-8 h-8 group-[.retracted]/sidebar:w-10 group-[.retracted]/sidebar:h-10 flex items-center justify-center rounded hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined text-[18px] group-[.retracted]/sidebar:text-[24px]">play_arrow</span>
+                            </button>
+                        </div>
+                        <input type="range" id="autoscroll-speed" value="1" min="0.1" max="5" step="0.1" class="w-full accent-primary h-1 bg-surface-variant rounded-full appearance-none cursor-pointer sidebar-text" oninput="updateAutoscrollSpeed(this.value)" title="Speed" />
+                        <div class="text-right mt-1 font-mono-data text-xs text-on-surface-variant sidebar-text"><span id="autoscroll-speed-label">1.0</span>x</div>
+                    </div>
+                </div>
+
+                <!-- Autoscroll moved up, strumming moved right -->
+            </nav>
+
+            <!-- Media Links Section -->
+            <div class="p-md shrink-0">
+                <!-- View Mode Links -->
+                <div id="view-links-section" class="view-mode-el flex flex-col gap-sm mb-md">
+                    @if (!string.IsNullOrWhiteSpace(Model.SpotifyLink)) {
+                        var spotifyAppUri = Model.SpotifyLink;
+                        if (spotifyAppUri.StartsWith("https://open.spotify.com/"))
+                        {
+                            var path = spotifyAppUri.Substring("https://open.spotify.com/".Length).Split('?')[0];
+                            spotifyAppUri = "spotify:" + path.Replace("/", ":");
+                        }
+                        <a href="@spotifyAppUri" target="_blank" class="flex items-center gap-3 glass-card p-sm rounded-lg border border-surface-variant transition-all hover:border-primary/50 group">
+                            <div class="text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.84.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.6.18-1.2.72-1.381 4.26-1.261 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>
+                            </div>
+                            <div class="flex-1 overflow-hidden sidebar-text">
+                                <h3 class="text-on-surface font-label-md text-sm font-semibold truncate">Spotify</h3>
+                                <p class="text-primary/80 text-xs truncate">Listen on Spotify</p>
+                            </div>
+                        </a>
+                    }
+                    @{
+                        var ytLinksObj = new List<ChordSharp.Models.YouTubeLink>();
+                        if (!string.IsNullOrEmpty(Model.YoutubeLinksJson)) {
+                            try {
+                                ytLinksObj = System.Text.Json.JsonSerializer.Deserialize<List<ChordSharp.Models.YouTubeLink>>(Model.YoutubeLinksJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ChordSharp.Models.YouTubeLink>();
+                            } catch {
+                                try {
+                                    var oldLinks = System.Text.Json.JsonSerializer.Deserialize<List<string>>(Model.YoutubeLinksJson) ?? new List<string>();
+                                    ytLinksObj = oldLinks.Select(url => new ChordSharp.Models.YouTubeLink { Label = "YouTube", Url = url }).ToList();
+                                } catch {}
+                            }
+                        }
+                    }
+                    @foreach (var yt in ytLinksObj) {
+                        <a href="@yt.Url" target="_blank" class="flex items-center gap-3 glass-card p-sm rounded-lg border border-surface-variant transition-all hover:border-primary/50 group">
+                            <div class="text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
+                            </div>
+                            <div class="flex-1 overflow-hidden sidebar-text">
+                                <h3 class="text-on-surface font-label-md text-sm font-semibold truncate">@yt.Label</h3>
+                                <p class="text-primary/80 text-xs truncate">Watch on YouTube</p>
+                            </div>
+                        </a>
+                    }
+                </div>
+                
+                <!-- Edit Mode Links & Audio Upload -->
+                <div id="edit-links-section" class="edit-mode-el hidden flex flex-col gap-sm mb-md p-sm bg-white/5 backdrop-blur-md rounded-lg border border-surface-variant sidebar-text">
+
+
+                    <label class="font-label-sm text-on-surface-variant text-xs uppercase tracking-widest">Spotify Link</label>
+                    <div class="input-glow-wrapper mb-2">
+                        <input type="text" id="edit-spotify-link" value="@Model.SpotifyLink" class="form-input text-sm" placeholder="https://open.spotify.com/..." />
+                    </div>
+                    
+                    <label class="font-label-sm text-on-surface-variant text-xs uppercase tracking-widest">YouTube Links (Label | URL)</label>
+                    <div class="input-glow-wrapper">
+                        <textarea id="edit-youtube-links" class="form-textarea text-sm h-20 resize-none" placeholder="Tutorial 1 | https://youtube.com/...">@string.Join("\n", ytLinksObj.Select(y => y.Label == "YouTube" ? y.Url : $"{y.Label} | {y.Url}"))</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Control Section (Docked Bottom Left) -->
+            @{
+                var audioTracks = new List<ChordSharp.Models.AudioTrack>();
+                if (!string.IsNullOrEmpty(Model.AudioFilesJson))
+                {
+                    try { audioTracks = System.Text.Json.JsonSerializer.Deserialize<List<ChordSharp.Models.AudioTrack>>(Model.AudioFilesJson) ?? new List<ChordSharp.Models.AudioTrack>(); } catch { }
+                }
+            }
+            @if (audioTracks.Any())
+            {
+                <div class="view-mode-el p-md border-t border-outline-variant bg-transparent shrink-0 w-full">
+                    <h3 class="text-[#a0a0a0] font-bold text-[10px] tracking-[0.2em] uppercase mb-3 sidebar-text">Audio Track</h3>
+                    
+                    <div class="flex items-center gap-3 mb-3">
+                        <button onclick="toggleAudio()" id="audio-play-btn" class="w-10 h-10 flex items-center justify-center bg-primary hover:bg-primary/80 text-on-primary rounded transition-colors shadow-[0_0_10px_var(--accent-dynamic-glow,rgba(157,78,221,0.4))] shrink-0 relative overflow-hidden">
+                            <span class="material-symbols-outlined text-[24px] ml-0.5" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                        </button>
+                        <div class="flex-1 overflow-hidden sidebar-text">
+                            @if (audioTracks.Count > 1)
+                            {
+                                <div class="input-glow-wrapper w-full h-10">
+                                    <select onchange="changeTrack(this.value)" class="form-input w-full h-full bg-transparent text-on-surface text-sm font-medium focus:outline-none cursor-pointer border-surface-variant">
+                                        @foreach(var track in audioTracks)
+                                        {
+                                            <option value="/uploads/audio/@track.FileName" class="bg-surface-container-high text-on-surface">@track.Label</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-on-surface text-sm font-medium truncate py-2 px-3 border border-surface-variant rounded bg-surface-container/50">@audioTracks.First().Label</div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <audio id="song-audio" class="hidden" ontimeupdate="updateAudioProgress()">
+                        <source id="song-audio-source" src="/uploads/audio/@audioTracks.First().FileName" />
+                    </audio>
+
+                    <input type="range" id="audio-progress" value="0" min="0" max="100" step="0.1" class="w-full accent-[#e0b6ff] h-1 bg-[#2a2a2a] rounded-full appearance-none cursor-pointer mb-3 sidebar-text" oninput="seekAudio(this.value)" />
+
+                    <div class="flex items-center justify-between pt-2 border-t border-surface-variant sidebar-text relative mt-2">
+                        <!-- Loop Button -->
+                        <button onclick="toggleAudioLoop()" id="btn-audio-loop" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 group w-1/3 justify-center" title="Loop">
+                            <span class="material-symbols-outlined text-[18px] group-[.active]:text-primary group-[.active]:font-bold">repeat</span>
+                            <span class="text-[11px] font-medium group-[.active]:text-primary">Loop</span>
+                        </button>
+
+                        <!-- Speed Menu -->
+                        <div class="relative w-1/3 flex justify-center">
+                            <button onclick="toggleAudioMenu(event, 'speed-menu')" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1" title="Speed">
+                                <span class="material-symbols-outlined text-[18px]">speed</span>
+                                <span id="speed-display" class="text-[11px] font-medium w-6 text-center">1x</span>
+                            </button>
+                            <div id="speed-menu" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden flex-col bg-surface-container border border-surface-variant rounded shadow-xl overflow-hidden z-50 w-20">
+                                <button onclick="setAudioSpeed(0.5)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">0.5x</button>
+                                <button onclick="setAudioSpeed(0.75)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">0.75x</button>
+                                <button onclick="setAudioSpeed(1.0)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">1x</button>
+                                <button onclick="setAudioSpeed(1.25)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">1.25x</button>
+                                <button onclick="setAudioSpeed(1.5)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">1.5x</button>
+                            </div>
+                        </div>
+
+                        <!-- Delay Menu -->
+                        <div class="relative w-1/3 flex justify-center border-l border-surface-variant">
+                            <button onclick="toggleAudioMenu(event, 'delay-menu')" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1" title="Delay Start">
+                                <span class="material-symbols-outlined text-[18px]">timer</span>
+                                <span id="delay-display" class="text-[11px] font-medium w-6 text-center">Off</span>
+                            </button>
+                            <div id="delay-menu" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden flex-col bg-surface-container border border-surface-variant rounded shadow-xl overflow-hidden z-50 w-20">
+                                <button onclick="setAudioDelay(0)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">Off</button>
+                                <button onclick="setAudioDelay(3)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">3s</button>
+                                <button onclick="setAudioDelay(5)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">5s</button>
+                                <button onclick="setAudioDelay(10)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">10s</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Edit Mode Audio Upload & Management -->
+            <div id="edit-audio-upload" class="edit-mode-el hidden p-md shrink-0 sidebar-text">
+                <div class="p-sm bg-white/5 border border-surface-variant rounded-lg">
+                    @if (audioTracks.Any())
+                    {
+                        <div class="mb-4">
+                            <label class="font-label-sm text-on-surface-variant text-xs uppercase mb-2 block tracking-widest">Manage Audio Tracks</label>
+                            <div class="flex flex-col gap-2">
+                                @foreach(var track in audioTracks)
+                                {
+                                    <div class="flex items-center justify-between p-2 bg-white/5 border border-surface-variant rounded">
+                                        <span class="text-sm text-on-surface truncate pr-2">@track.Label</span>
+                                        <button onclick="deleteAudioTrack('@track.FileName')" class="text-error hover:text-red-400 p-1 shrink-0">
+                                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <label class="font-label-sm text-on-surface-variant text-xs uppercase mb-1 block tracking-widest">Upload New Audio</label>
+                    <form action="/Songs/UploadAudioInline/@Model.Id" method="post" enctype="multipart/form-data" class="flex flex-col gap-2">
+                        <div class="input-glow-wrapper">
+                            <input type="text" name="audioLabel" placeholder="Track Name (e.g. Acapella)" class="form-input text-sm" required />
+                        </div>
+                        <input type="file" name="audioFile" accept="audio/*" class="w-full text-xs text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-primary file:text-on-primary hover:file:bg-inverse-primary cursor-pointer" required />
+                        <button type="submit" class="btn btn-primary w-full mt-2 text-xs py-1">Upload</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Column: Main Chord Sheet -->
+        <section class="flex-1 bg-transparent overflow-y-auto relative p-xl flex flex-col items-center">
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-64 bg-primary-container opacity-10 blur-[120px] pointer-events-none"></div>
+            
+            <div class="w-full max-w-4xl relative z-10">
+                <!-- Header -->
+                <div class="mb-xl flex flex-col @(hasCover ? "md:flex-row items-end text-left" : "items-center text-center") gap-xl">
+                    <div class="relative w-48 h-48 md:w-56 md:h-56 shrink-0 group @(hasCover ? "" : "edit-mode-el hidden")">
+                        <!-- View Mode Cover -->
+                        <div class="view-mode-el w-full h-full">
+                            @if (hasCover)
+                            {
+                                <img id="header-cover-art" src="@coverUrl" alt="@Model.Title cover" class="w-full h-full rounded-md object-cover shadow-2xl" style="box-shadow: 0 16px 40px rgba(0,0,0,0.6);" />
+                            }
+                            else
+                            {
+                                <div class="w-full h-full rounded-md bg-surface-variant flex items-center justify-center shadow-2xl" style="box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+                                    <span class="material-symbols-outlined text-[64px] text-on-surface-variant opacity-50">music_note</span>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Edit Mode Cover -->
+                        <div id="cover-upload-area" class="edit-mode-el hidden w-full h-full cursor-pointer rounded-md overflow-hidden shadow-2xl border-2 border-dashed border-surface-variant hover:border-primary transition-colors" style="box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+                            @if (hasCover)
+                            {
+                                <img id="cover-preview-img" src="@coverUrl" alt="Cover" class="w-full h-full object-cover" />
+                                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity gap-2">
+                                    <span class="material-symbols-outlined text-[32px] text-white">edit</span>
+                                    <span class="text-white text-sm font-medium">Change Cover</span>
+                                </div>
+                                <button type="button" onclick="removeCover(event)" class="absolute top-2 right-2 bg-black/70 text-error hover:text-red-400 rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10" title="Remove cover">
+                                    <span class="material-symbols-outlined text-[20px]">close</span>
+                                </button>
+                            }
+                            else
+                            {
+                                <div id="cover-placeholder" class="w-full h-full flex flex-col items-center justify-center gap-2 text-on-surface-variant bg-surface-variant/50">
+                                    <span class="material-symbols-outlined text-[48px] opacity-50">add_photo_alternate</span>
+                                    <span class="text-sm opacity-60">Add Cover</span>
+                                </div>
+                            }
+                            <input type="file" id="cover-file-input" accept=".jpg,.jpeg,.png,.webp" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="uploadCover(this.files[0])" />
+                        </div>
+                    </div>
+
+                    <div class="flex-1 pb-2 flex flex-col w-full @(!hasCover ? "items-center" : "")">
+                        <h1 id="view-title" class="view-mode-el font-black text-5xl md:text-[5rem] text-on-surface tracking-tighter mb-4 leading-none @(!hasCover ? "text-center" : "")" style="margin-left: -0.05em;">@Model.Title</h1>
+                        
+                        <div class="view-mode-el flex items-center flex-wrap gap-2 text-sm text-on-surface font-medium mt-auto @(!hasCover ? "justify-center" : "")">
+                            <span class="font-bold">@(Model.Artist ?? "Unknown Artist")</span>
+                            
+                            @if (!string.IsNullOrEmpty(Model.Album))
+                            {
+                                <span class="text-on-surface-variant text-[10px] opacity-70">•</span>
+                                <span class="font-semibold text-on-surface/90">@Model.Album</span>
+                            }
+                        </div>
+
+                        <!-- Edit Mode Inputs -->
+                        <div class="edit-mode-el hidden flex-col gap-2 w-full mt-4">
+                            <input id="edit-title" type="text" class="w-full font-black text-4xl md:text-5xl bg-black/30 backdrop-blur-md border-transparent rounded text-on-surface tracking-tighter p-2 focus:outline-none focus:ring-0 !border-none transition-shadow @(!hasCover ? "text-center" : "")" value="@Model.Title" placeholder="Song Title" />
+                            <input id="edit-artist" type="text" class="w-full font-bold text-lg bg-black/30 backdrop-blur-md border-transparent rounded text-on-surface opacity-90 p-2 focus:outline-none focus:ring-0 !border-none transition-shadow @(!hasCover ? "text-center" : "")" value="@Model.Artist" placeholder="Artist Name" />
+                            <input id="edit-album" type="text" class="w-full font-medium text-sm bg-black/30 backdrop-blur-md border-transparent rounded text-on-surface opacity-80 p-2 focus:outline-none focus:ring-0 !border-none transition-shadow @(!hasCover ? "text-center" : "")" value="@Model.Album" placeholder="Album Name" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sheet Canvas -->
+                <div class="glass-card rounded-[2rem] p-xl border border-surface-variant relative">
+                    <div class="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent rounded-[2rem] pointer-events-none"></div>
+                    
+                    <div class="relative z-10">
+                        <!-- Edit Mode Toggles (Lyrics vs Chords) -->
+                        <div id="edit-lyrics-controls" class="edit-mode-el hidden flex gap-md mb-md border-b border-surface-variant/30 pb-2">
+                            <button onclick="setLyricsMode('text')" id="btn-mode-text" class="bg-primary text-on-primary px-3 py-1 rounded font-label-md transition-colors">Edit Text</button>
+                            <button onclick="setLyricsMode('chords')" id="btn-mode-chords" class="bg-transparent border border-surface-variant text-on-surface hover:bg-white/5 px-3 py-1 rounded font-label-md transition-colors">Place Chords</button>
+                        </div>
+
+                        <!-- Lyrics Viewer Container -->
+                        <div id="lyrics-container" class="view-mode-el mt-xl font-mono-data text-body-lg"></div>
+                        
+                        <!-- Lyrics Editor Container -->
+                        <textarea id="edit-lyrics" class="edit-mode-el hidden w-full h-[600px] mt-xl font-mono-data text-body-lg bg-transparent border-transparent focus:ring-0 focus:outline-none !border-none p-md text-on-surface resize-none" style="box-shadow: none; outline: none;" placeholder="Paste your lyrics here...">@Model.Lyrics</textarea>
+                        
+                        <!-- Chord Editor Canvas -->
+                        <div id="editor-canvas" class="hidden mt-xl font-mono-data text-body-lg bg-transparent border-transparent p-md min-h-[400px]"></div>
+                    </div>
+                </div>
+
+                <!-- Footer Legend -->
+                <footer id="footer-legend" class="view-mode-el mt-xl text-center text-sm text-on-surface-variant/60 font-body-sm pb-xl"></footer>
+            </div>
+        </section>
+        
+        <!-- Right Sidebar: Notes -->
+        <aside class="w-80 glass-card p-md flex flex-col shrink-0 overflow-y-auto" style="border-radius: 0; border-top: 0; border-bottom: 0; border-right: 0;">
+            <div class="flex-1 flex flex-col gap-md sticky top-md">
+                <button id="save-inline-btn" onclick="saveInline()" class="hidden btn btn-primary w-full">Save</button>
+                
+                <!-- Chords Grid -->
+                <section id="chord-shapes-section" class="view-mode-el glass-card rounded-[1rem] border border-surface-variant overflow-hidden flex flex-col" style="display: none;">
+                    <div class="bg-white/5 px-md py-sm flex items-center gap-xs border-b border-surface-variant/50 shrink-0">
+                        <span class="material-symbols-outlined text-[18px] text-primary">grid_view</span>
+                        <h3 class="text-primary font-label-md text-label-md uppercase tracking-widest">Chords Used</h3>
+                    </div>
+                    <div class="p-md">
+                        <div id="chord-ref-container" class="flex flex-wrap gap-md"></div>
+                    </div>
+                </section>
+                
+                <!-- Strumming Pattern -->
+                <section class="glass-card rounded-[1rem] border border-surface-variant overflow-hidden flex flex-col shrink-0 @(string.IsNullOrWhiteSpace(Model.StrummingPattern) ? "hidden edit-mode-el" : "")">
+                    <div class="bg-white/5 px-md py-sm flex items-center gap-xs border-b border-surface-variant/50 shrink-0">
+                        <span class="material-symbols-outlined text-[18px] text-primary">graphic_eq</span>
+                        <h3 class="text-primary font-label-md text-label-md uppercase tracking-widest">Strumming</h3>
+                    </div>
+                    <div class="p-md flex flex-col gap-2">
+                        <div id="strum-display" class="view-mode-el font-mono-data text-headline-sm flex items-center gap-xs"></div>
+                        <!-- Edit Mode: Strumming -->
+                        <div class="edit-mode-el hidden mt-2">
+                            <input id="edit-strumming" type="text" class="w-full bg-black/30 backdrop-blur-md border-transparent rounded p-2 text-on-surface font-mono-data focus:outline-none focus:ring-0 !border-none" value="@Model.StrummingPattern" placeholder="e.g. D D U U D U" />
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Performer Notes -->
+                <section class="glass-card rounded-[1rem] border border-surface-variant overflow-hidden flex flex-col min-h-[200px]">
+                    <div class="bg-white/5 px-md py-sm flex items-center gap-xs border-b border-surface-variant/50 shrink-0">
+                        <span class="material-symbols-outlined text-[18px] text-primary">campaign</span>
+                        <h3 class="text-primary font-label-md text-label-md uppercase tracking-widest">Notes</h3>
+                    </div>
+                    <div class="p-md flex-1 flex flex-col">
+                        <textarea id="view-notes" onblur="autosaveNotes(this.value)" class="flex-1 w-full text-on-surface-variant font-body-md text-body-md bg-transparent border-transparent rounded p-2 focus:bg-black/30 backdrop-blur-md focus:outline-none focus:ring-0 !border-none resize-none transition-colors" placeholder="Add performance notes here...">@Model.Notes</textarea>
+                    </div>
+                </section>
+                
+                <div class="hidden">
+                    @Html.AntiForgeryToken()
+                </div>
+                <button onclick="deleteSongWithPrompts()" class="edit-mode-el hidden btn btn-danger w-full mt-4">Delete Song</button>
+            </div>
+        </aside>
+    </main>
+</div>
+
+@section Scripts {
+<script>
+    // Globals expected by both chord-viewer and chord-editor
+    let LYRICS_RAW = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lyrics));
+    let CHORDS_JSON = @Html.Raw(Model.ChordsJson ?? "[]");
+    let STRUM_PATTERN = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StrummingPattern ?? ""));
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const img = document.getElementById('header-cover-art') || document.getElementById('cover-preview-img');
+        if (img) {
+            if (img.complete) {
+                applyCoverColor();
+            } else {
+                img.addEventListener('load', applyCoverColor);
+            }
+            
+            function applyCoverColor() {
+                if (window.ColorExtractor) {
+                    const color = window.ColorExtractor.extractDominantColor(img);
+                    if (color) {
+                        window.ColorExtractor.applyDynamicTheme(color);
+                    }
+                }
+            }
+        }
+    });
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('editor-sidebar');
+        const icon = document.getElementById('sidebar-toggle-icon');
+        const texts = sidebar.querySelectorAll('.sidebar-text');
+        
+        if (sidebar.classList.contains('w-64')) {
+            sidebar.classList.remove('w-64');
+            sidebar.classList.add('w-20', 'retracted');
+            icon.textContent = 'menu';
+            texts.forEach(t => t.style.display = 'none');
+        } else {
+            sidebar.classList.remove('w-20', 'retracted');
+            sidebar.classList.add('w-64');
+            icon.textContent = 'menu_open';
+            texts.forEach(t => t.style.display = '');
+        }
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            const player = document.getElementById('song-audio');
+            if (player) {
+                e.preventDefault();
+                toggleAudio();
+            }
+        }
+    });
+
+    // Audio Player Logic
+    let audioDelaySeconds = 0;
+    let audioDelayTimeout = null;
+
+    function toggleAudio() {
+        const player = document.getElementById('song-audio');
+        const btn = document.getElementById('audio-play-btn').querySelector('.material-symbols-outlined');
+        
+        if (audioDelayTimeout) {
+            clearInterval(audioDelayTimeout);
+            audioDelayTimeout = null;
+            btn.textContent = 'play_arrow';
+            return;
+        }
+
+        if (player.paused) {
+            if (audioDelaySeconds > 0) {
+                let remaining = audioDelaySeconds;
+                btn.textContent = remaining;
+                
+                audioDelayTimeout = setInterval(() => {
+                    remaining--;
+                    if (remaining > 0) {
+                        btn.textContent = remaining;
+                    } else {
+                        clearInterval(audioDelayTimeout);
+                        audioDelayTimeout = null;
+                        player.play();
+                        btn.textContent = 'pause';
+                    }
+                }, 1000);
+            } else {
+                player.play();
+                btn.textContent = 'pause';
+            }
+        } else {
+            player.pause();
+            btn.textContent = 'play_arrow';
+        }
+    }
+
+    function toggleAudioLoop() {
+        const player = document.getElementById('song-audio');
+        const btn = document.getElementById('btn-audio-loop');
+        player.loop = !player.loop;
+        if (player.loop) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    }
+
+    function setAudioSpeed(val) {
+        const player = document.getElementById('song-audio');
+        player.playbackRate = val;
+        document.getElementById('speed-display').textContent = val + 'x';
+        document.getElementById('speed-menu').classList.add('hidden');
+        document.getElementById('speed-menu').classList.remove('flex');
+        document.activeElement.blur();
+    }
+
+    function setAudioDelay(val) {
+        audioDelaySeconds = val;
+        const disp = document.getElementById('delay-display');
+        if (val === 0) {
+            disp.textContent = 'Off';
+        } else {
+            disp.textContent = val + 's';
+        }
+        document.getElementById('delay-menu').classList.add('hidden');
+        document.getElementById('delay-menu').classList.remove('flex');
+        document.activeElement.blur();
+    }
+
+    function toggleAudioMenu(e, menuId) {
+        e.stopPropagation(); // Prevent the document click listener from immediately closing it
+        
+        // Hide other menus
+        ['speed-menu', 'delay-menu'].forEach(id => {
+            if (id !== menuId) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            }
+        });
+        
+        const menu = document.getElementById(menuId);
+        if (menu.classList.contains('hidden')) {
+            menu.classList.remove('hidden');
+            menu.classList.add('flex');
+        } else {
+            menu.classList.add('hidden');
+            menu.classList.remove('flex');
+        }
+    }
+
+    // Close audio menus when clicking outside
+    document.addEventListener('click', function(e) {
+        const speedMenu = document.getElementById('speed-menu');
+        const delayMenu = document.getElementById('delay-menu');
+        
+        if (speedMenu && !speedMenu.classList.contains('hidden') && !e.target.closest('#speed-menu')) {
+            speedMenu.classList.add('hidden');
+            speedMenu.classList.remove('flex');
+        }
+        if (delayMenu && !delayMenu.classList.contains('hidden') && !e.target.closest('#delay-menu')) {
+            delayMenu.classList.add('hidden');
+            delayMenu.classList.remove('flex');
+        }
+    });
+
+    function changeTrack(url) {
+        const player = document.getElementById('song-audio');
+        const source = document.getElementById('song-audio-source');
+        const btn = document.getElementById('audio-play-btn').querySelector('.material-symbols-outlined');
+        
+        if (audioDelayTimeout) {
+            clearInterval(audioDelayTimeout);
+            audioDelayTimeout = null;
+        }
+        
+        source.src = url;
+        player.load();
+        player.play();
+        btn.textContent = 'pause';
+    }
+
+    function updateAudioProgress() {
+        const player = document.getElementById('song-audio');
+        const slider = document.getElementById('audio-progress');
+        if (player.duration) {
+            slider.value = (player.currentTime / player.duration) * 100;
+        }
+    }
+
+    function seekAudio(val) {
+        const player = document.getElementById('song-audio');
+        if (player.duration) {
+            player.currentTime = (val / 100) * player.duration;
+        }
+    }
+    
+    async function deleteAudioTrack(fileName) {
+        if (!confirm('Are you sure you want to delete this audio track?')) return;
+        
+        try {
+            const resp = await fetch(`/Songs/DeleteAudioTrack/@Model.Id?fileName=${encodeURIComponent(fileName)}`, {
+                method: 'POST'
+            });
+            if (resp.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to delete track.');
+            }
+        } catch (e) {
+            alert('Error deleting track.');
+        }
+    }
+
+    // Inline Editing Logic
+    let isEditMode = false;
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const viewEls = document.querySelectorAll('.view-mode-el');
+        const editEls = document.querySelectorAll('.edit-mode-el');
+        const saveBtn = document.getElementById('save-inline-btn');
+        
+        if (isEditMode) {
+            // Expand sidebar if it's retracted so the edit options are fully visible
+            const sidebar = document.getElementById('editor-sidebar');
+            if (sidebar.classList.contains('w-20')) {
+                toggleSidebar();
+            }
+
+            viewEls.forEach(el => el.classList.add('hidden'));
+            editEls.forEach(el => el.classList.remove('hidden'));
+            saveBtn.classList.remove('hidden');
+            
+            // Set Text Mode by default when opening editor
+            setLyricsMode('text');
+        } else {
+            viewEls.forEach(el => el.classList.remove('hidden'));
+            editEls.forEach(el => el.classList.add('hidden'));
+            saveBtn.classList.add('hidden');
+            document.getElementById('editor-canvas').classList.add('hidden'); // Also explicitly hide canvas
+        }
+    }
+
+    function setLyricsMode(mode) {
+        const textBtn = document.getElementById('btn-mode-text');
+        const chordsBtn = document.getElementById('btn-mode-chords');
+        const textArea = document.getElementById('edit-lyrics');
+        const canvas = document.getElementById('editor-canvas');
+        
+        if (mode === 'text') {
+            textBtn.className = 'bg-primary text-on-primary px-3 py-1 rounded font-label-md transition-colors';
+            chordsBtn.className = 'bg-transparent border border-surface-variant text-on-surface hover:bg-white/5 px-3 py-1 rounded font-label-md transition-colors';
+            
+            textArea.classList.remove('hidden');
+            canvas.classList.add('hidden');
+        } else {
+            chordsBtn.className = 'bg-primary text-on-primary px-3 py-1 rounded font-label-md transition-colors';
+            textBtn.className = 'bg-transparent border border-surface-variant text-on-surface hover:bg-white/5 px-3 py-1 rounded font-label-md transition-colors';
+            
+            // Sync lyrics to global var so chord editor knows the new lyrics
+            LYRICS_RAW = textArea.value;
+            // Clear and re-render the chord editor canvas
+            if (typeof initEditor === 'function') {
+                document.getElementById('editor-canvas').innerHTML = '';
+                initEditor();
+            } else if (typeof renderEditor === 'function') {
+                document.getElementById('editor-canvas').innerHTML = '';
+                renderEditor();
+            }
+            
+            textArea.classList.add('hidden');
+            canvas.classList.remove('hidden');
+        }
+    }
+
+    let scrollInterval = null;
+    let scrollSpeed = 1.0;
+
+    function updateAutoscrollSpeed(val) {
+        scrollSpeed = parseFloat(val);
+        document.getElementById('autoscroll-speed-label').textContent = scrollSpeed.toFixed(1);
+    }
+
+    function toggleAutoscroll() {
+        const btn = document.getElementById('autoscroll-btn');
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const scroller = document.querySelector('main > section'); // the main scrollable container
+
+        if (scrollInterval) {
+            cancelAnimationFrame(scrollInterval);
+            scrollInterval = null;
+            icon.textContent = 'play_arrow';
+            btn.classList.remove('text-primary');
+        } else {
+            icon.textContent = 'pause';
+            btn.classList.add('text-primary');
+            let lastTime = performance.now();
+
+            function step(time) {
+                const delta = time - lastTime;
+                lastTime = time;
+                // scrollSpeed is roughly pixels per 50ms, so let's adjust for requestAnimationFrame (usually 16ms delta)
+                const pxPerMs = (scrollSpeed * 50) / 1000;
+                scroller.scrollBy(0, pxPerMs * delta);
+                scrollInterval = requestAnimationFrame(step);
+            }
+            scrollInterval = requestAnimationFrame(step);
+        }
+    }
+
+    // Auto-save Notes on Blur
+    async function autosaveNotes(val) {
+        // If in edit mode, don't autosave, let the user click the explicit Save button
+        if (isEditMode) return;
+        
+        const request = {
+            Notes: val
+        };
+        
+        try {
+            await fetch(`/Songs/UpdateInline/@Model.Id`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            });
+            // Show a subtle toast or indicator if needed, but it's meant to be silent
+        } catch (err) {
+            console.error('Failed to autosave notes:', err);
+        }
+    }
+
+    async function saveInline() {
+        const saveBtn = document.getElementById('save-inline-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        
+        // Ensure latest lyrics are grabbed
+        LYRICS_RAW = document.getElementById('edit-lyrics').value;
+        
+        // Grab chords from the editor state if it exists
+        const latestChords = typeof chordsData !== 'undefined' ? JSON.stringify(chordsData) : JSON.stringify(CHORDS_JSON);
+        
+        // Grab youtube links
+        const ytLines = document.getElementById('edit-youtube-links').value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const ytObjects = ytLines.map(line => {
+            const separatorIndex = line.indexOf('|');
+            if (separatorIndex > -1) {
+                return { 
+                    Label: line.substring(0, separatorIndex).trim(), 
+                    Url: line.substring(separatorIndex + 1).trim() 
+                };
+            }
+            return { Label: "YouTube", Url: line };
+        });
+        
+        const request = {
+            Title: document.getElementById('edit-title').value,
+            Artist: document.getElementById('edit-artist').value,
+            Album: document.getElementById('edit-album').value,
+            StrummingPattern: document.getElementById('edit-strumming').value,
+            Notes: document.getElementById('view-notes').value,
+            SpotifyLink: document.getElementById('edit-spotify-link').value,
+            YoutubeLinksJson: JSON.stringify(ytObjects),
+            Lyrics: LYRICS_RAW,
+            ChordsJson: latestChords
+        };
+        
+        try {
+            const resp = await fetch(`/Songs/UpdateInline/@Model.Id`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            });
+            
+            if (resp.ok) {
+                // Instantly reload to reflect all saved changes natively
+                window.location.reload();
+            } else {
+                alert('Failed to save changes.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        } catch (err) {
+            alert('Network error.');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        }
+    }
+
+    // Cover Image Upload/Remove
+    async function uploadCover(file) {
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('coverFile', file);
+        
+        try {
+            const resp = await fetch(`/Songs/UploadCover/@Model.Id`, {
+                method: 'POST',
+                body: formData
+            });
+            if (resp.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to upload cover image.');
+            }
+        } catch (e) {
+            alert('Error uploading cover.');
+        }
+    }
+
+    async function removeCover(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!confirm('Remove cover image?')) return;
+        
+        try {
+            const resp = await fetch(`/Songs/RemoveCover/@Model.Id`, { method: 'POST' });
+            if (resp.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to remove cover.');
+            }
+        } catch (e) {
+            alert('Error removing cover.');
+        }
+    }
+
+    // Auto-enable edit mode if requested in URL
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('editMode') === 'true') {
+            // Need a slight delay to ensure scripts are initialized
+            setTimeout(() => {
+                if (typeof toggleEditMode === 'function') toggleEditMode();
+            }, 100);
+        }
+    });
+
+    async function deleteSongWithPrompts() {
+        if (!confirm('Are you sure you want to delete this song?')) return;
+        
+        const songName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Title));
+        const userInput = prompt(`Please type the name of the song to verify deletion:\n"${songName}"`);
+        
+        if (userInput !== songName) {
+            alert('Name does not match. Deletion cancelled.');
+            return;
+        }
+        
+        if (!confirm('Are you absolutely sure? This will delete the song, album cover, and audio files permanently.')) return;
+        
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        const formData = new FormData();
+        if (token) {
+            formData.append('__RequestVerificationToken', token);
+        }
+        
+        try {
+            const resp = await fetch('/Songs/Delete/@Model.Id', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (resp.ok || resp.redirected) {
+                // Force a clean redirect to the dashboard
+                window.location.href = '/Songs';
+            } else {
+                const text = await resp.text();
+                alert('Failed to delete song. Server returned: ' + resp.status + ' ' + text.substring(0, 50));
+            }
+        } catch (e) {
+            alert('Error deleting song: ' + e);
+        }
+    }
+</script>
+<style>
+    /* Add specific overrides for the chord-viewer.js generated elements to match Sonic Obsidian */
+    
+    /* Dynamic accent color — applied when cover exists */
+    .accent-color {
+        color: var(--accent-dynamic, var(--primary, #e0b6ff));
+    }
+    .accent-border {
+        border-color: var(--accent-dynamic, var(--primary, #e0b6ff));
+    }
+    
+    .chord-card {
+        background: var(--bg-card); /* Fallback */
+        background: linear-gradient(180deg, rgba(17,17,24,0.7) 0%, rgba(9,9,14,0.9) 100%);
+        border: 1px solid #353534;
+        border-radius: 1rem;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: all 0.3s;
+    }
+    .chord-card:hover {
+        box-shadow: 0 0 40px -10px rgba(224, 182, 255, 0.25);
+        border-color: rgba(224, 182, 255, 0.4);
+    }
+    .chord-name {
+        color: #e5e2e1;
+        font-weight: 700;
+        font-family: 'Hanken Grotesk';
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    .chord-card:hover .chord-name {
+        color: #e0b6ff;
+    }
+    /* VexChords SVG strokes to match dark mode */
+    .chord-card svg path, .chord-card svg line, .chord-card svg circle {
+        stroke: #e5e2e1 !important;
+    }
+    .chord-card svg circle[fill="black"] {
+        fill: #9d4edd !important;
+        stroke: #9d4edd !important;
+        filter: drop-shadow(0 0 4px rgba(157,78,221,0.8));
+    }
+    .chord-card svg text {
+        fill: #e5e2e1 !important;
+    }
+
+    /* Override lyrics line containers generated by JS */
+    .group { position: relative; }
+    .lyric-row {
+        color: #e5e2e1;
+        font-size: 15px;
+        opacity: 0.9;
+        transition: opacity 0.2s;
+        margin-top: 4px;
+    }
+    .group:hover .lyric-row { opacity: 1; }
+    
+    .chord-row {
+        display: flex;
+        margin-bottom: 2px;
+        font-weight: 700;
+        color: #9d4edd;
+        filter: drop-shadow(0 0 8px rgba(157,78,221,0.4));
+        position: relative;
+        min-height: 24px;
+    }
+    .chord-cell { position: absolute; }
+    
+    /* Input Range Custom Styling for Audio Player */
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 12px;
+        width: 12px;
+        border-radius: 50%;
+        background: #e0b6ff;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(224,182,255,0.5);
+    }
+    input[type=range]::-moz-range-thumb {
+        height: 12px;
+        width: 12px;
+        border-radius: 50%;
+        background: #e0b6ff;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 0 10px rgba(224,182,255,0.5);
+    }
+    
+    /* Editor Canvas Styles */
+    .editor-section-label {
+        color: #9d4edd;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-top: 16px;
+        margin-bottom: 4px;
+        opacity: 0.8;
+    }
+    .editor-line {
+        position: relative;
+        margin-bottom: 8px;
+        padding: 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    .editor-line:hover {
+        background-color: rgba(255,255,255,0.05);
+    }
+    .editor-chord-row {
+        position: relative;
+        height: 24px;
+        cursor: text; /* implies click to type */
+        border-bottom: 1px dashed rgba(157,78,221,0.2);
+    }
+    .editor-chord-row:hover {
+        background-color: rgba(157,78,221,0.1);
+        border-bottom: 1px dashed rgba(157,78,221,0.5);
+    }
+    .editor-chord-item {
+        position: absolute;
+        top: 2px;
+        font-weight: 700;
+        color: #e0b6ff;
+        cursor: pointer;
+        background: rgba(157,78,221,0.2);
+        padding: 0 4px;
+        border-radius: 4px;
+        box-shadow: 0 0 8px rgba(157,78,221,0.4);
+        transition: all 0.2s;
+    }
+    .editor-chord-item:hover {
+        background: rgba(157,78,221,0.5);
+        transform: scale(1.1);
+    }
+    .editor-lyric-row {
+        color: #e5e2e1;
+        font-size: 15px;
+        white-space: pre;
+    }
+
+    /* Popover Styles */
+    .chord-popover {
+        position: absolute;
+        z-index: 50;
+        background: var(--bg-card);
+        background: linear-gradient(180deg, rgba(17,17,24,0.95) 0%, rgba(9,9,14,0.98) 100%);
+        border: 1px solid #353534;
+        border-radius: 8px;
+        padding: 8px;
+        display: flex;
+        gap: 6px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        backdrop-filter: blur(10px);
+    }
+    .chord-popover input {
+        width: 80px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: white;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-family: inherit;
+        outline: none;
+    }
+    .chord-popover input:focus {
+        border-color: #9d4edd;
+    }
+    .pop-btn {
+        background: #9d4edd;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 12px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+    .pop-btn:hover {
+        background: #e0b6ff;
+        color: #1a1a1a;
+    }
+    .pop-delete {
+        background: #e24b4a;
+    }
+    .pop-delete:hover {
+        background: #ff6b6b;
+    }
+    
+    /* Autocomplete dropdown */
+    .chord-autocomplete {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: #130F1E;
+        border: 1px solid #353534;
+        border-radius: 4px;
+        margin-top: 4px;
+        width: 100%;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 60;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .chord-ac-item {
+        padding: 6px 8px;
+        cursor: pointer;
+        color: #e5e2e1;
+        font-size: 14px;
+    }
+    .chord-ac-item:hover, .chord-ac-selected {
+        background: #9d4edd;
+        color: white;
+    }
+    .chord-ac-item strong {
+        color: #e0b6ff;
+    }
+    .chord-ac-item:hover strong, .chord-ac-selected strong {
+        color: white;
+    }
+</style>
+
+<!-- Load color extractor before other scripts -->
+<script src="~/js/color-extractor.js" asp-append-version="true"></script>
+
+<!-- Load both scripts. They now have initViewer and initEditor which obey DOM loading state -->
+<script src="~/js/chord-viewer.js" asp-append-version="true"></script>
+<script src="~/js/chord-editor.js" asp-append-version="true"></script>
+
+@if (hasCover)
+{
+<script>
+    // Extract accent color from cover and override ALL violet/primary theming
+    (function() {
+        const coverUrl = '@Html.Raw(coverUrl)';
+        if (!coverUrl || !window.ColorExtractor) return;
+
+        ColorExtractor.extractColorFromUrl(coverUrl).then(color => {
+            if (!color) return;
+
+            const root = document.documentElement;
+            const {r, g, b, hex, hexGlow, hexContainer} = color;
+
+            // === Override ALL site.css violet variables ===
+            root.style.setProperty('--primary', hex);
+            root.style.setProperty('--primary-container', hexContainer);
+            root.style.setProperty('--on-primary-container', '#fffdff');
+            root.style.setProperty('--inverse-primary', hexContainer);
+            root.style.setProperty('--accent-blue', hex);
+            root.style.setProperty('--accent-blue-glow', `rgba(${r},${g},${b},0.15)`);
+            root.style.setProperty('--border-focus', hexContainer);
+            root.style.setProperty('--shadow-glow-primary', `0 0 20px rgba(${r},${g},${b},0.15)`);
+            root.style.setProperty('--shadow-glow-blue', `0 0 20px rgba(${r},${g},${b},0.15)`);
+
+            // === Inject Tailwind class overrides ===
+            // Tailwind CDN generates hardcoded color values for .text-primary, .bg-primary, etc.
+            // We need a <style> block to override them.
+            let dynamicStyle = document.getElementById('dynamic-accent-style');
+            if (!dynamicStyle) {
+                dynamicStyle = document.createElement('style');
+                dynamicStyle.id = 'dynamic-accent-style';
+                document.head.appendChild(dynamicStyle);
+            }
+            dynamicStyle.textContent = `
+                /* Override Tailwind primary color classes */
+                .text-primary { color: ${hex} !important; }
+                .text-primary\\/80 { color: rgba(${r},${g},${b},0.8) !important; }
+                .bg-primary { background-color: ${hex} !important; }
+                .bg-primary-container { background-color: ${hexContainer} !important; }
+                .bg-primary\\/5 { background-color: rgba(${r},${g},${b},0.05) !important; }
+                .bg-primary\\/10 { background-color: rgba(${r},${g},${b},0.10) !important; }
+                .bg-primary\\/15 { background-color: rgba(${r},${g},${b},0.15) !important; }
+                .bg-primary\\/30 { background-color: rgba(${r},${g},${b},0.30) !important; }
+                .border-primary { border-color: ${hex} !important; }
+                .border-primary\\/30 { border-color: rgba(${r},${g},${b},0.30) !important; }
+                .border-primary\\/50 { border-color: rgba(${r},${g},${b},0.50) !important; }
+                .hover\\:text-primary:hover { color: ${hex} !important; }
+                .hover\\:border-primary:hover { border-color: ${hex} !important; }
+                .hover\\:border-primary\\/50:hover { border-color: rgba(${r},${g},${b},0.50) !important; }
+                .hover\\:bg-primary\\/10:hover { background-color: rgba(${r},${g},${b},0.10) !important; }
+                .group-hover\\:text-primary:is(.group:hover *) { color: ${hex} !important; }
+                .group-hover\\:bg-primary\\/5:is(.group:hover *) { background-color: rgba(${r},${g},${b},0.05) !important; }
+                .group-hover\\:bg-primary\\/15:is(.group:hover *) { background-color: rgba(${r},${g},${b},0.15) !important; }
+                .group-hover\\:border-primary\\/30:is(.group:hover *) { border-color: rgba(${r},${g},${b},0.30) !important; }
+                .group-hover\\:scale-110:is(.group:hover *) { --tw-scale-x: 1.1; --tw-scale-y: 1.1; }
+                .accent-primary { accent-color: ${hex} !important; }
+                .accent-color { color: ${hex} !important; }
+                .text-surface-tint { color: ${hex} !important; }
+                .shadow-\\[0_0_10px_rgba\\(157\\,78\\,221\\,0\\.4\\)\\] { box-shadow: 0 0 10px rgba(${r},${g},${b},0.4) !important; }
+                
+                /* Override site.css button styles */
+                .btn-primary {
+                    background: rgba(${r},${g},${b},0.1) !important;
+                    color: ${hex} !important;
+                    border-color: rgba(${r},${g},${b},0.3) !important;
+                }
+                .btn-primary:hover {
+                    background: rgba(${r},${g},${b},0.2) !important;
+                    border-color: rgba(${r},${g},${b},0.5) !important;
+                }
+                
+                /* Chord colors */
+                .chord-row { color: ${hexContainer} !important; filter: drop-shadow(0 0 8px rgba(${r},${g},${b},0.4)) !important; }
+                .chord-cell { color: ${hexContainer} !important; }
+                .editor-chord-item { color: ${hex} !important; background: rgba(${r},${g},${b},0.2) !important; box-shadow: 0 0 8px rgba(${r},${g},${b},0.4) !important; }
+                .editor-chord-item:hover { background: rgba(${r},${g},${b},0.5) !important; }
+                .section-label, .editor-section-label { color: ${hex} !important; }
+                
+                /* Edge glow for all cards and buttons */
+                .glass-card::after, .btn::after, .chord-card::after, .form-card::after {
+                    background: radial-gradient(
+                        120px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+                        rgba(${r},${g},${b},1),
+                        transparent 100%
+                    ) !important;
+                }
+                .chord-card:hover {
+                    box-shadow: 0 0 40px -10px rgba(${r},${g},${b},0.25) !important;
+                    border-color: rgba(${r},${g},${b},0.4) !important;
+                }
+                .chord-card:hover .chord-name { color: ${hex} !important; }
+                
+                /* VexChords finger dots */
+                .chord-card svg circle[fill="black"] {
+                    fill: ${hexContainer} !important;
+                    stroke: ${hexContainer} !important;
+                    filter: drop-shadow(0 0 4px rgba(${r},${g},${b},0.8)) !important;
+                }
+
+                /* Editor chord row hover */
+                .editor-chord-row:hover { background-color: rgba(${r},${g},${b},0.1) !important; }
+                .editor-chord-row { border-bottom-color: rgba(${r},${g},${b},0.2) !important; }
+                .editor-chord-row:hover { border-bottom-color: rgba(${r},${g},${b},0.5) !important; }
+
+                /* Popover */
+                .chord-popover input:focus { border-color: ${hexContainer} !important; }
+                .pop-btn { background: ${hexContainer} !important; }
+                .pop-btn:hover { background: ${hex} !important; }
+                .chord-ac-item:hover, .chord-ac-selected { background: ${hexContainer} !important; }
+
+                /* Range inputs */
+                input[type=range]::-webkit-slider-thumb { background: ${hex} !important; box-shadow: 0 0 10px rgba(${r},${g},${b},0.5) !important; }
+                input[type=range]::-moz-range-thumb { background: ${hex} !important; box-shadow: 0 0 10px rgba(${r},${g},${b},0.5) !important; }
+
+                /* Song card accent bar */
+                .song-card::before { background: linear-gradient(90deg, ${hex}, rgba(${r},${g},${b},0.5)) !important; }
+            `;
+        });
+    })();
+</script>
+}
+}

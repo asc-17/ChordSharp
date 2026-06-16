@@ -1,0 +1,35 @@
+@model ChordSharp.Models.Song
+@{
+    ViewData["Title"] = "Edit Chords — " + Model.Title;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">EDIT CHORDS</h1>
+        <p class="page-subtitle">Click above any lyric position to place a chord for <strong>@Model.Title</strong></p>
+    </div>
+</div>
+
+<div class="editor-toolbar" id="editor-toolbar">
+    <div class="editor-info">
+        <span id="chord-count">0</span> chords placed
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a class="btn btn-ghost btn-sm" asp-action="View" asp-route-id="@Model.Id">Preview</a>
+        <button class="btn btn-success btn-sm" id="save-btn" onclick="saveChords()">💾 Save Chords</button>
+    </div>
+</div>
+
+<div class="editor-canvas" id="editor-canvas">
+    <!-- Rendered by JS -->
+</div>
+
+@section Scripts {
+<script>
+    const SONG_ID = @Model.Id;
+    const LYRICS_RAW = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lyrics));
+    const CHORDS_JSON = @Html.Raw(Model.ChordsJson ?? "[]");
+    const ANTIFORGERY_TOKEN = '@Html.AntiForgeryToken()';
+</script>
+<script src="~/js/chord-editor.js" asp-append-version="true"></script>
+}

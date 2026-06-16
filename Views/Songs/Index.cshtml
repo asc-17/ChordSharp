@@ -1,0 +1,426 @@
+@model IEnumerable<ChordSharp.Models.Song>
+@{
+    ViewData["Title"] = "All Songs";
+    var favorites = Model.Where(s => s.IsFavorite).Take(3).ToList();
+}
+
+<div class="flex flex-col min-h-screen">
+    <main class="flex-1 w-full max-w-screen-2xl mx-auto px-margin-mobile md:px-margin-desktop pb-margin-desktop pt-lg">
+        
+        @if (favorites.Any())
+        {
+            <!-- Favorites Section -->
+            <section class="mb-xl">
+                <h2 class="font-display-lg text-display-lg text-on-surface font-bold tracking-tight mb-lg">Favorites</h2>
+                <div class="flex gap-lg overflow-x-auto no-scrollbar pb-sm snap-x">
+                    @for (int i = 0; i < favorites.Count; i++)
+                    {
+                        var fav = favorites[i];
+                        var chordCount = GetChordCount(fav.ChordsJson);
+                        var glowBg = i == 0 ? "bg-primary/15 group-hover:bg-primary/30" : (i == 1 ? "bg-tertiary/15 group-hover:bg-tertiary/30" : "bg-error/15 group-hover:bg-error/30");
+                        var glowText = i == 0 ? "text-primary" : (i == 1 ? "text-tertiary" : "text-error");
+                        var hoverText = i == 0 ? "group-hover:text-primary" : (i == 1 ? "group-hover:text-tertiary" : "group-hover:text-error");
+
+                        <a class="snap-start group glass-card border border-surface-variant rounded-[1.5rem] flex items-stretch aspect-video sm:aspect-[21/9] w-[85vw] sm:w-[480px] lg:w-[560px] shrink-0 relative overflow-hidden outline-none transition-all duration-300" href="/Songs/View/@fav.Id">
+                            @if (!string.IsNullOrEmpty(fav.CoverImageFileName))
+                            {
+                                <!-- Cover image as ambient blurred background for favorites -->
+                                <img src="/uploads/covers/@fav.CoverImageFileName" alt="" class="absolute inset-0 w-full h-full object-cover blur-[35px] scale-125 opacity-70" data-cover-card />
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent z-0"></div>
+                                
+                                <!-- Docked left full-height square cover -->
+                                <img src="/uploads/covers/@fav.CoverImageFileName" alt="" class="h-full aspect-square object-cover border-r border-white/10 shadow-xl shrink-0 relative z-10" />
+                            }
+                            else
+                            {
+                                <div class="absolute -right-20 -top-20 w-64 h-64 rounded-full blur-[80px] transition-colors duration-500 @glowBg z-0"></div>
+                                @if (i == 0)
+                                {
+                                    <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-inverse-primary/10 rounded-full blur-[60px] group-hover:bg-inverse-primary/20 transition-colors duration-500 z-0"></div>
+                                }
+                            }
+                            <div class="p-xl flex-1 flex flex-col justify-end relative z-10 h-full overflow-hidden">
+                                <div class="flex flex-col gap-2 w-full">
+                                    <div class="overflow-hidden">
+                                        <h3 class="font-display-lg-mobile text-display-lg-mobile text-on-surface font-bold mb-xs transition-colors line-clamp-2 @hoverText" title="@fav.Title">@fav.Title</h3>
+                                        <div class="flex flex-col gap-3 mt-2">
+                                            <p class="font-body-lg text-body-lg text-on-surface-variant flex items-center gap-2 flex-wrap">
+                                                <span class="truncate">@(fav.Artist ?? "Unknown Artist")</span>
+                                                @if (!string.IsNullOrEmpty(fav.Album))
+                                                {
+                                                    <span class="text-[12px] opacity-70 shrink-0">•</span>
+                                                    <span class="font-semibold text-on-surface/90 truncate">@fav.Album</span>
+                                                }
+                                            </p>
+                                            <div class="flex items-center gap-sm shrink-0">
+                                                <span class="bg-black/40 border border-white/10 px-sm py-xs rounded-lg text-label-sm font-label-sm flex items-center gap-xs backdrop-blur-md w-fit @glowText">
+                                                    <span class="material-symbols-outlined text-[16px]">piano</span> @chordCount chords
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </section>
+        }
+
+        <!-- All Songs Section -->
+        <section>
+            <!-- Page Header Section -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-xl">
+                <div>
+                    <h2 class="font-display-lg text-display-lg text-on-surface font-bold tracking-tight">All Songs</h2>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant mt-sm">Your personal chord sheet collection.</p>
+                </div>
+                <a href="/Songs/Create" class="btn btn-primary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'wght' 600;">add</span> Add Song
+                </a>
+            </div>
+
+            <!-- Toolbar (Search & Filter) -->
+            <div class="flex flex-col sm:flex-row gap-md mb-xl glass-card p-sm rounded-[1rem] border border-surface-variant">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant">search</span>
+                    <input id="search-input" oninput="applyFilters()" class="w-full bg-transparent border-none pl-xl pr-md py-sm text-body-md focus:outline-none focus:ring-0 text-on-surface placeholder:text-outline-variant h-full" placeholder="Search songs, artists..." type="text"/>
+                </div>
+                <div class="flex gap-sm relative">
+                    <!-- Filter Button -->
+                    <button id="filter-btn" onclick="toggleMenu(event, 'filter-menu')" class="btn btn-secondary">
+                        <span class="material-symbols-outlined">filter_list</span>
+                        <span class="hidden sm:inline" id="filter-label">All</span>
+                    </button>
+                    <!-- Filter Menu -->
+                    <div id="filter-menu" class="absolute top-full right-full sm:right-auto sm:left-0 mt-2 hidden flex-col bg-surface-container border border-surface-variant rounded shadow-xl overflow-hidden z-50 w-48 py-1">
+                        <div class="px-3 py-1 text-xs font-bold text-outline-variant uppercase tracking-wider mt-1">Status</div>
+                        <button onclick="setFilter('all')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left flex items-center justify-between">
+                            All Songs <span id="check-filter-all" class="material-symbols-outlined text-[16px] text-primary">check</span>
+                        </button>
+                        <button onclick="setFilter('archived')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left flex items-center justify-between">
+                            Archived <span id="check-filter-archived" class="material-symbols-outlined text-[16px] text-primary hidden">check</span>
+                        </button>
+                        
+                        <div class="h-px bg-surface-variant my-1 mx-2"></div>
+                        <div class="px-3 py-1 text-xs font-bold text-outline-variant uppercase tracking-wider mt-1">Chords</div>
+                        
+                        <button onclick="setChordsFilter('any')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left flex items-center justify-between">
+                            Any <span id="check-chords-any" class="material-symbols-outlined text-[16px] text-primary">check</span>
+                        </button>
+                        <button onclick="setChordsFilter('0-4')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left flex items-center justify-between">
+                            0-4 Chords <span id="check-chords-0-4" class="material-symbols-outlined text-[16px] text-primary hidden">check</span>
+                        </button>
+                        <button onclick="setChordsFilter('5-8')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left flex items-center justify-between">
+                            5-8 Chords <span id="check-chords-5-8" class="material-symbols-outlined text-[16px] text-primary hidden">check</span>
+                        </button>
+                        <button onclick="setChordsFilter('9+')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left flex items-center justify-between">
+                            9+ Chords <span id="check-chords-9+" class="material-symbols-outlined text-[16px] text-primary hidden">check</span>
+                        </button>
+                    </div>
+
+                    <!-- Sort Button -->
+                    <button id="sort-btn" onclick="toggleMenu(event, 'sort-menu')" class="btn btn-secondary">
+                        <span class="material-symbols-outlined">sort</span>
+                        <span class="hidden sm:inline" id="sort-label">Recent</span>
+                    </button>
+                    <!-- Sort Menu -->
+                    <div id="sort-menu" class="absolute top-full right-0 mt-2 hidden flex-col bg-surface-container border border-surface-variant rounded shadow-xl overflow-hidden z-50 w-36">
+                        <button onclick="setSort('recent')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">Recent</button>
+                        <button onclick="setSort('az')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">A-Z</button>
+                        <button onclick="setSort('za')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">Z-A</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Song Grid -->
+            <div id="song-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-lg">
+                @if (!Model.Any())
+                {
+                    <!-- Empty State / Add New Card -->
+                    <a href="/Songs/Create" class="glass-card border border-dashed border-outline-variant rounded-[1rem] p-lg flex flex-col items-center justify-center gap-md relative overflow-hidden outline-none min-h-[180px]">
+                        <div class="relative z-10 flex flex-col items-center gap-md">
+                            <div class="w-16 h-16 rounded-full bg-surface-variant/30 border border-transparent flex items-center justify-center">
+                                <span class="material-symbols-outlined text-outline-variant text-[32px]">add</span>
+                            </div>
+                            <span class="font-label-md text-label-md text-on-surface-variant">Import new song</span>
+                        </div>
+                    </a>
+                }
+                else
+                {
+                    @foreach (var song in Model)
+                    {
+                        var chordCount = GetChordCount(song.ChordsJson);
+                        var hasCover = !string.IsNullOrEmpty(song.CoverImageFileName);
+                        <a href="/Songs/View/@song.Id" class="song-card glass-card border border-surface-variant rounded-[1rem] p-lg flex flex-col gap-md relative overflow-hidden outline-none"
+                           data-id="@song.Id"
+                           data-title="@System.Web.HttpUtility.HtmlEncode(song.Title.ToLower())"
+                           data-artist="@System.Web.HttpUtility.HtmlEncode(song.Artist?.ToLower() ?? "")"
+                           data-date="@song.UpdatedAt.ToString("O")"
+                           data-favorite="@(song.IsFavorite ? "true" : "false")"
+                           data-archived="@(song.IsArchived ? "true" : "false")"
+                           data-chords="@chordCount"
+                           onmouseenter="setHoveredSong(@song.Id)"
+                           onmouseleave="clearHoveredSong(@song.Id)">
+                            @if (hasCover)
+                            {
+                                <!-- Blurred cover background -->
+                                <img src="/uploads/covers/@song.CoverImageFileName" alt="" class="absolute inset-0 w-full h-full object-cover blur-[25px] scale-125 opacity-50" data-cover-card />
+                                <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/55"></div>
+                            }
+                            else
+                            {
+                                <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-primary/5 rounded-full blur-[40px] transition-colors duration-500 z-0"></div>
+                            }
+                            <div class="flex-1 flex flex-col relative z-10">
+                                <div class="flex justify-between items-start mb-md">
+                                    <div class="flex items-start gap-md overflow-hidden">
+                                        @if (hasCover)
+                                        {
+                                            <img src="/uploads/covers/@song.CoverImageFileName" alt="" class="w-20 h-20 rounded-xl object-cover border border-white/10 shadow-md shrink-0" />
+                                        }
+                                        <div class="overflow-hidden">
+                                            <h3 class="font-headline-md text-headline-md text-on-surface font-semibold truncate max-w-[180px]" title="@song.Title">@song.Title</h3>
+                                            <p class="font-body-md text-body-md text-on-surface-variant mt-xs flex items-center gap-1 flex-wrap">
+                                                <span class="truncate">@(song.Artist ?? "Unknown Artist")</span>
+                                                @if (!string.IsNullOrEmpty(song.Album))
+                                                {
+                                                    <span class="text-[10px] opacity-70 shrink-0">•</span>
+                                                    <span class="font-semibold text-on-surface/90 truncate">@song.Album</span>
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="toggleFavorite(event, @song.Id, this)" class="text-on-surface-variant hover:text-primary p-xs rounded-full hover:bg-surface-variant/50 transition-colors z-20 shrink-0" tabindex="-1" style="color: @(song.IsFavorite ? "var(--primary)" : "")">
+                                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(song.IsFavorite ? "1" : "0");">star</span>
+                                    </button>
+                                </div>
+                                <div class="mt-auto pt-md flex items-center justify-between border-t border-surface-variant/50">
+                                    <span class="bg-black/40 text-primary border border-white/5 px-sm py-xs rounded-lg text-label-sm font-label-sm flex items-center gap-xs backdrop-blur-md shrink-0">
+                                        <span class="material-symbols-outlined text-[16px]">piano</span> @chordCount chords
+                                    </span>
+                                    <span class="font-mono-data text-mono-data text-outline-variant flex items-center gap-xs shrink-0">
+                                        <span class="material-symbols-outlined text-[14px]">calendar_today</span> @song.UpdatedAt.ToString("MMM d, yyyy")
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                }
+            </div>
+        </section>
+    </main>
+</div>
+
+@functions {
+    public int GetChordCount(string? chordsJson)
+    {
+        if (string.IsNullOrEmpty(chordsJson) || chordsJson == "[]") return 0;
+        try {
+            var chordEntries = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement[]>(chordsJson);
+            if (chordEntries != null) {
+                var uniqueNames = new HashSet<string>();
+                foreach (var entry in chordEntries) {
+                    if (entry.TryGetProperty("chord", out var chordProp)) {
+                        uniqueNames.Add(chordProp.GetString() ?? "");
+                    }
+                }
+                return uniqueNames.Count;
+            }
+        } catch { }
+        return 0;
+    }
+}
+
+@section Scripts {
+    <script>
+        function toggleFavorite(e, id, btn) {
+            e.preventDefault(); // Prevent navigating to the song link
+            e.stopPropagation();
+            fetch(`/Songs/ToggleFavorite/${id}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.isFavorite) {
+                    btn.style.color = 'var(--primary)';
+                    btn.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
+                    btn.closest('.song-card').setAttribute('data-favorite', 'true');
+                } else {
+                    btn.style.color = '';
+                    btn.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0";
+                    btn.closest('.song-card').setAttribute('data-favorite', 'false');
+                }
+                applyFilters(); // Re-apply filters in case we are in "Favorites" view
+            });
+        }
+
+        let currentFilter = 'all';
+        let currentSort = 'recent';
+        let currentChords = 'any';
+        let hoveredSongId = null;
+
+        function setHoveredSong(id) {
+            hoveredSongId = id;
+        }
+
+        function clearHoveredSong(id) {
+            if (hoveredSongId === id) {
+                hoveredSongId = null;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'a' && hoveredSongId !== null) {
+                // Ensure we aren't typing in the search box
+                if (e.target.tagName === 'INPUT') return;
+                toggleArchive(hoveredSongId);
+            }
+        });
+
+        function toggleArchive(id) {
+            fetch(`/Songs/ToggleArchive/${id}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const card = document.querySelector(`.song-card[data-id="${id}"]`);
+                if (card) {
+                    card.setAttribute('data-archived', data.isArchived ? 'true' : 'false');
+                    applyFilters();
+                }
+            });
+        }
+
+        function toggleMenu(e, menuId) {
+            e.stopPropagation();
+            // Hide others
+            ['filter-menu', 'sort-menu'].forEach(id => {
+                if (id !== menuId) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.add('hidden');
+                        el.classList.remove('flex');
+                    }
+                }
+            });
+            
+            const menu = document.getElementById(menuId);
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#filter-btn') && !e.target.closest('#filter-menu')) {
+                const fm = document.getElementById('filter-menu');
+                if (fm) { fm.classList.add('hidden'); fm.classList.remove('flex'); }
+            }
+            if (!e.target.closest('#sort-btn') && !e.target.closest('#sort-menu')) {
+                const sm = document.getElementById('sort-menu');
+                if (sm) { sm.classList.add('hidden'); sm.classList.remove('flex'); }
+            }
+        });
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.getElementById('filter-label').innerText = filter === 'archived' ? 'Archived' : 'All';
+            
+            document.getElementById('check-filter-all').classList.toggle('hidden', filter !== 'all');
+            document.getElementById('check-filter-archived').classList.toggle('hidden', filter !== 'archived');
+            
+            applyFilters();
+        }
+
+        function setChordsFilter(chords) {
+            currentChords = chords;
+            
+            ['any', '0-4', '5-8', '9+'].forEach(c => {
+                const check = document.getElementById(`check-chords-${c}`);
+                if (check) check.classList.toggle('hidden', c !== chords);
+            });
+            
+            applyFilters();
+        }
+
+        function setSort(sort) {
+            currentSort = sort;
+            const labels = { 'recent': 'Recent', 'az': 'A-Z', 'za': 'Z-A' };
+            document.getElementById('sort-label').innerText = labels[sort];
+            const sm = document.getElementById('sort-menu');
+            if (sm) { sm.classList.add('hidden'); sm.classList.remove('flex'); }
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const searchInput = document.getElementById('search-input');
+            if (!searchInput) return;
+            
+            const query = searchInput.value.toLowerCase();
+            const container = document.getElementById('song-grid');
+            if (!container) return;
+            
+            const cards = Array.from(container.querySelectorAll('.song-card'));
+
+            cards.forEach(card => {
+                const title = card.getAttribute('data-title') || '';
+                const artist = card.getAttribute('data-artist') || '';
+                const isArchived = card.getAttribute('data-archived') === 'true';
+                const chordCount = parseInt(card.getAttribute('data-chords') || '0', 10);
+
+                const matchesSearch = title.includes(query) || artist.includes(query);
+                const matchesFilter = currentFilter === 'all' ? !isArchived : (currentFilter === 'archived' && isArchived);
+                
+                let matchesChords = true;
+                if (currentChords === '0-4') matchesChords = chordCount <= 4;
+                if (currentChords === '5-8') matchesChords = chordCount >= 5 && chordCount <= 8;
+                if (currentChords === '9+') matchesChords = chordCount >= 9;
+
+                if (matchesSearch && matchesFilter && matchesChords) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Sort cards
+            cards.sort((a, b) => {
+                if (currentSort === 'recent') {
+                    const dateA = new Date(a.getAttribute('data-date'));
+                    const dateB = new Date(b.getAttribute('data-date'));
+                    return dateB - dateA;
+                } else if (currentSort === 'az') {
+                    const titleA = a.getAttribute('data-title') || '';
+                    const titleB = b.getAttribute('data-title') || '';
+                    return titleA.localeCompare(titleB);
+                } else if (currentSort === 'za') {
+                    const titleA = a.getAttribute('data-title') || '';
+                    const titleB = b.getAttribute('data-title') || '';
+                    return titleB.localeCompare(titleA);
+                }
+                return 0;
+            });
+
+            // Re-append in sorted order
+            cards.forEach(card => container.appendChild(card));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyFilters();
+        });
+    </script>
+    <form style="display:none;">@Html.AntiForgeryToken()</form>
+}
