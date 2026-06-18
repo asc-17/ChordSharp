@@ -18,6 +18,7 @@ const CHORD_DB = {
     'E7':   { chord: [[1,0],[2,0],[3,1],[4,0],[5,2],[6,0]] },
     'F':    { chord: [[3,2],[4,3],[5,3]], barres:[{fromString:6,toString:1,fret:1}] },
     'Fm':   { chord: [[3,1],[4,3],[5,3]], barres:[{fromString:6,toString:1,fret:1}] },
+    'Fmaj7':{ chord: [[1,0],[2,1],[3,2],[4,3],[5,'x'],[6,'x']] },
     'G':    { chord: [[1,3],[2,0],[3,0],[4,0],[5,2],[6,3]] },
     'Gm':   { chord: [[1,3],[2,3],[4,5],[5,5]], barres:[{fromString:6,toString:1,fret:3}] },
     'G7':   { chord: [[1,1],[2,0],[3,0],[4,0],[5,2],[6,3]] },
@@ -43,7 +44,7 @@ const CHORD_NAMES_FULL = {
     'C':'C major','Cm':'C minor','C7':'C7','Cmaj7':'Cmaj7',
     'D':'D major','Dm':'D minor','D7':'D7',
     'E':'E major','Em':'E minor','E7':'E7',
-    'F':'F major (barre)','Fm':'F minor',
+    'F':'F major (barre)','Fm':'F minor','Fmaj7':'Fmaj7',
     'G':'G major','Gm':'G minor','G7':'G7',
     'A':'A major','Am':'A minor','A7':'A7','Am7':'Am7',
     'B':'B major (barre)','Bm':'B minor (barre)','B7':'B7',
@@ -159,7 +160,9 @@ function initViewer() {
     let sectionDiv = null;
 
     lines.forEach((line, idx) => {
-        if (isSectionLine(line)) {
+        let isSection = isSectionLine(line);
+
+        if (isSection) {
             // Start new section
             sectionDiv = document.createElement('div');
             sectionDiv.className = 'section';
@@ -171,50 +174,63 @@ function initViewer() {
 
             container.appendChild(sectionDiv);
             currentSection = parseSectionName(line);
+        } else if (line.trim() === '') {
+            // Empty lines — skip but don't break section
             return;
-        }
-
-        // Empty lines — skip but don't break section
-        if (line.trim() === '') return;
-
-        // Ensure we have a section div
-        if (!sectionDiv) {
+        } else if (!sectionDiv) {
+            // Ensure we have a section div
             sectionDiv = document.createElement('div');
             sectionDiv.className = 'section';
             container.appendChild(sectionDiv);
         }
 
+        const lineChords = chordsByLine[idx];
+        const hasChords = lineChords && lineChords.length > 0;
+
+        // If it's a section header AND has NO chords, we are done with this line
+        if (isSection && !hasChords) return;
+
         const block = document.createElement('div');
         block.className = 'line-block';
 
-        // Chord row
-        const lineChords = chordsByLine[idx];
-        if (lineChords && lineChords.length > 0) {
-            const chordRow = document.createElement('div');
-            chordRow.className = 'chord-row';
-
-            lineChords.sort((a, b) => a.charIndex - b.charIndex);
+        let numChordRows = 0;
+        if (hasChords) {
+            // Group by rowIndex
+            const byRow = {};
             lineChords.forEach(c => {
-                const span = document.createElement('span');
-                span.className = 'chord-cell';
-                span.style.left = (c.charIndex * charW) + 'px';
-                span.textContent = c.chord;
-                chordRow.appendChild(span);
+                const r = c.rowIndex ?? 0;
+                if (!byRow[r]) byRow[r] = [];
+                byRow[r].push(c);
             });
 
-            block.appendChild(chordRow);
+            const rowIndexes = Object.keys(byRow).map(Number).sort((a, b) => a - b);
+            numChordRows = rowIndexes.length;
+
+            rowIndexes.forEach(rowIdx => {
+                const chordRow = document.createElement('div');
+                chordRow.className = 'chord-row';
+
+                byRow[rowIdx].sort((a, b) => a.charIndex - b.charIndex);
+                byRow[rowIdx].forEach(c => {
+                    const span = document.createElement('span');
+                    span.className = 'chord-cell';
+                    span.style.left = (c.charIndex * charW) + 'px';
+                    span.textContent = c.chord;
+                    chordRow.appendChild(span);
+                });
+
+                block.appendChild(chordRow);
+            });
         }
 
-        // Lyric row
-        const lyricRow = document.createElement('div');
-        lyricRow.className = 'lyric-row';
-        if (lineChords && lineChords.length > 0) {
-            lyricRow.style.marginTop = '20px';
-        } else {
-            lyricRow.style.marginTop = '0';
+        // Lyric row (only for non-section lines)
+        if (!isSection) {
+            const lyricRow = document.createElement('div');
+            lyricRow.className = 'lyric-row';
+            lyricRow.style.marginTop = numChordRows > 0 ? '4px' : '0';
+            lyricRow.textContent = line;
+            block.appendChild(lyricRow);
         }
-        lyricRow.textContent = line;
-        block.appendChild(lyricRow);
 
         sectionDiv.appendChild(block);
     });

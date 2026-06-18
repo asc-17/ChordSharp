@@ -81,7 +81,7 @@
             </div>
 
             <!-- Toolbar (Search & Filter) -->
-            <div class="flex flex-col sm:flex-row gap-md mb-xl glass-card p-sm rounded-[1rem] border border-surface-variant">
+            <div class="flex flex-col sm:flex-row gap-md mb-xl glass-card p-sm rounded-[1rem] border border-surface-variant relative z-50">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant">search</span>
                     <input id="search-input" oninput="applyFilters()" class="w-full bg-transparent border-none pl-xl pr-md py-sm text-body-md focus:outline-none focus:ring-0 text-on-surface placeholder:text-outline-variant h-full" placeholder="Search songs, artists..." type="text"/>
@@ -129,6 +129,7 @@
                         <button onclick="setSort('recent')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">Recent</button>
                         <button onclick="setSort('az')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">A-Z</button>
                         <button onclick="setSort('za')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">Z-A</button>
+                        <button onclick="setSort('custom')" class="px-4 py-2 text-sm hover:bg-surface-variant text-on-surface text-left">Custom</button>
                     </div>
                 </div>
             </div>
@@ -261,9 +262,10 @@
         }
 
         let currentFilter = 'all';
-        let currentSort = 'recent';
+        let currentSort = localStorage.getItem('chordsharp_sort') || 'recent';
         let currentChords = 'any';
         let hoveredSongId = null;
+        let customOrder = JSON.parse(localStorage.getItem('chordsharp_custom_order') || '[]');
 
         function setHoveredSong(id) {
             hoveredSongId = id;
@@ -277,7 +279,6 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'a' && hoveredSongId !== null) {
-                // Ensure we aren't typing in the search box
                 if (e.target.tagName === 'INPUT') return;
                 toggleArchive(hoveredSongId);
             }
@@ -303,7 +304,6 @@
 
         function toggleMenu(e, menuId) {
             e.stopPropagation();
-            // Hide others
             ['filter-menu', 'sort-menu'].forEach(id => {
                 if (id !== menuId) {
                     const el = document.getElementById(id);
@@ -358,12 +358,72 @@
 
         function setSort(sort) {
             currentSort = sort;
-            const labels = { 'recent': 'Recent', 'az': 'A-Z', 'za': 'Z-A' };
-            document.getElementById('sort-label').innerText = labels[sort];
+            localStorage.setItem('chordsharp_sort', sort);
+            const labels = { 'recent': 'Recent', 'az': 'A-Z', 'za': 'Z-A', 'custom': 'Custom' };
+            document.getElementById('sort-label').innerText = labels[sort] || 'Recent';
             const sm = document.getElementById('sort-menu');
             if (sm) { sm.classList.add('hidden'); sm.classList.remove('flex'); }
             applyFilters();
+            updateDraggable();
         }
+
+        function updateDraggable() {
+            const cards = document.querySelectorAll('.song-card');
+            cards.forEach(card => {
+                if (currentSort === 'custom') {
+                    card.setAttribute('draggable', 'true');
+                } else {
+                    card.removeAttribute('draggable');
+                }
+            });
+        }
+
+        let draggedCard = null;
+
+        document.addEventListener('dragstart', (e) => {
+            const card = e.target.closest('.song-card');
+            if (card && currentSort === 'custom') {
+                draggedCard = card;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', card.getAttribute('data-id'));
+                setTimeout(() => {
+                    card.classList.add('opacity-50', 'scale-95');
+                }, 0);
+            }
+        });
+
+        document.addEventListener('dragover', (e) => {
+            if (!draggedCard || currentSort !== 'custom') return;
+            e.preventDefault(); 
+            e.dataTransfer.dropEffect = 'move';
+            
+            const card = e.target.closest('.song-card');
+            if (card && card !== draggedCard) {
+                const container = document.getElementById('song-grid');
+                const allCards = Array.from(container.querySelectorAll('.song-card:not([style*="display: none"])'));
+                const draggedIdx = allCards.indexOf(draggedCard);
+                const hoveredIdx = allCards.indexOf(card);
+                
+                if (hoveredIdx < draggedIdx) {
+                    container.insertBefore(draggedCard, card);
+                } else {
+                    container.insertBefore(draggedCard, card.nextSibling);
+                }
+            }
+        });
+
+        document.addEventListener('dragend', (e) => {
+            if (!draggedCard) return;
+            draggedCard.classList.remove('opacity-50', 'scale-95');
+            draggedCard = null;
+            
+            if (currentSort === 'custom') {
+                const container = document.getElementById('song-grid');
+                const allCards = Array.from(container.querySelectorAll('.song-card'));
+                customOrder = allCards.map(c => c.getAttribute('data-id'));
+                localStorage.setItem('chordsharp_custom_order', JSON.stringify(customOrder));
+            }
+        });
 
         function applyFilters() {
             const searchInput = document.getElementById('search-input');
@@ -396,7 +456,6 @@
                 }
             });
 
-            // Sort cards
             cards.sort((a, b) => {
                 if (currentSort === 'recent') {
                     const dateA = new Date(a.getAttribute('data-date'));
@@ -410,16 +469,31 @@
                     const titleA = a.getAttribute('data-title') || '';
                     const titleB = b.getAttribute('data-title') || '';
                     return titleB.localeCompare(titleA);
+                } else if (currentSort === 'custom') {
+                    const idA = a.getAttribute('data-id');
+                    const idB = b.getAttribute('data-id');
+                    let idxA = customOrder.indexOf(idA);
+                    let idxB = customOrder.indexOf(idB);
+                    if (idxA === -1 && idxB === -1) {
+                         const dateA = new Date(a.getAttribute('data-date'));
+                         const dateB = new Date(b.getAttribute('data-date'));
+                         return dateB - dateA; 
+                    }
+                    if (idxA === -1) return -1;
+                    if (idxB === -1) return 1;
+                    return idxA - idxB;
                 }
                 return 0;
             });
 
-            // Re-append in sorted order
             cards.forEach(card => container.appendChild(card));
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const labels = { 'recent': 'Recent', 'az': 'A-Z', 'za': 'Z-A', 'custom': 'Custom' };
+            document.getElementById('sort-label').innerText = labels[currentSort] || 'Recent';
             applyFilters();
+            updateDraggable();
         });
     </script>
     <form style="display:none;">@Html.AntiForgeryToken()</form>

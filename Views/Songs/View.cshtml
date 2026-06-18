@@ -48,15 +48,35 @@
                 
                 <!-- Autoscroller (View Mode Only) -->
                 <div class="view-mode-el px-md py-sm mt-4">
-                    <div class="glass-card p-sm rounded-lg border border-surface-variant group-[.retracted]/sidebar:border-transparent group-[.retracted]/sidebar:bg-transparent group-[.retracted]/sidebar:p-0 flex flex-col gap-2">
-                        <div class="flex items-center justify-between mb-2 group-[.retracted]/sidebar:mb-0 group-[.retracted]/sidebar:justify-center">
-                            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest sidebar-text">Autoscroll</span>
-                            <button onclick="toggleAutoscroll()" id="autoscroll-btn" class="bg-surface-variant text-on-surface w-8 h-8 group-[.retracted]/sidebar:w-10 group-[.retracted]/sidebar:h-10 flex items-center justify-center rounded hover:text-primary transition-colors">
-                                <span class="material-symbols-outlined text-[18px] group-[.retracted]/sidebar:text-[24px]">play_arrow</span>
+                    <div class="glass-card rounded-[1rem] border border-surface-variant overflow-hidden group-[.retracted]/sidebar:border-transparent group-[.retracted]/sidebar:bg-transparent group-[.retracted]/sidebar:p-0 flex flex-col">
+                        <div class="bg-white/5 px-md py-sm flex items-center justify-between border-b border-surface-variant/50 shrink-0 group-[.retracted]/sidebar:mb-0 group-[.retracted]/sidebar:justify-center group-[.retracted]/sidebar:p-0 group-[.retracted]/sidebar:bg-transparent group-[.retracted]/sidebar:border-0">
+                            <div class="flex items-center gap-xs group-[.retracted]/sidebar:hidden">
+                                <span class="material-symbols-outlined text-[18px] text-primary">mouse</span>
+                                <h3 class="text-primary font-label-md text-label-md uppercase tracking-widest">Autoscroll</h3>
+                            </div>
+                            <button onclick="toggleAutoscroll()" id="autoscroll-btn" class="bg-surface-variant text-on-surface w-7 h-7 group-[.retracted]/sidebar:w-10 group-[.retracted]/sidebar:h-10 flex items-center justify-center rounded-full hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined text-[16px] group-[.retracted]/sidebar:text-[24px]">play_arrow</span>
                             </button>
                         </div>
-                        <input type="range" id="autoscroll-speed" value="1" min="0.1" max="5" step="0.1" class="w-full accent-primary h-1 bg-surface-variant rounded-full appearance-none cursor-pointer sidebar-text" oninput="updateAutoscrollSpeed(this.value)" title="Speed" />
-                        <div class="text-right mt-1 font-mono-data text-xs text-on-surface-variant sidebar-text"><span id="autoscroll-speed-label">1.0</span>x</div>
+                        <div class="p-sm flex flex-col gap-2 group-[.retracted]/sidebar:hidden">
+                            <input type="range" id="autoscroll-speed" value="1" min="0.1" max="5" step="0.1" class="w-full accent-primary h-1 bg-surface-variant rounded-full appearance-none cursor-pointer sidebar-text" oninput="updateAutoscrollSpeed(this.value)" title="Speed" />
+                            <div class="text-right mt-1 font-mono-data text-xs text-on-surface-variant sidebar-text"><span id="autoscroll-speed-label">1.0</span>x</div>
+                            <!-- Autoscroll Delay -->
+                        <div class="sidebar-text flex items-center justify-between pt-1 border-t border-surface-variant/30">
+                            <span class="text-[10px] text-on-surface-variant uppercase tracking-widest">Delay</span>
+                            <div class="relative">
+                                <button onclick="toggleAutoscrollDelayMenu(event)" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">timer</span>
+                                    <span id="autoscroll-delay-display" class="text-[11px] font-medium w-6 text-center">Off</span>
+                                </button>
+                                <div id="autoscroll-delay-menu" class="absolute bottom-full right-0 mb-2 hidden flex-col bg-surface-container border border-surface-variant rounded shadow-xl overflow-hidden z-50 w-20">
+                                    <button onclick="setAutoscrollDelay(0)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">Off</button>
+                                    <button onclick="setAutoscrollDelay(3)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">3s</button>
+                                    <button onclick="setAutoscrollDelay(5)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">5s</button>
+                                    <button onclick="setAutoscrollDelay(10)" class="px-3 py-1.5 text-xs hover:bg-surface-variant text-on-surface text-center">10s</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -74,7 +94,7 @@
                             var path = spotifyAppUri.Substring("https://open.spotify.com/".Length).Split('?')[0];
                             spotifyAppUri = "spotify:" + path.Replace("/", ":");
                         }
-                        <a href="@spotifyAppUri" target="_blank" class="flex items-center gap-3 glass-card p-sm rounded-lg border border-surface-variant transition-all hover:border-primary/50 group">
+                        <a href="@spotifyAppUri" target="_blank" class="flex items-center gap-3 glass-card p-sm rounded-[1rem] border border-surface-variant transition-all hover:border-primary/50 group">
                             <div class="text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                 <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.84.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.6.18-1.2.72-1.381 4.26-1.261 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>
                             </div>
@@ -82,6 +102,7 @@
                                 <h3 class="text-on-surface font-label-md text-sm font-semibold truncate">Spotify</h3>
                                 <p class="text-primary/80 text-xs truncate">Listen on Spotify</p>
                             </div>
+                            <span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-50 group-hover:text-primary group-hover:opacity-100 transition-all shrink-0 sidebar-text pr-1">open_in_new</span>
                         </a>
                     }
                     @{
@@ -98,7 +119,7 @@
                         }
                     }
                     @foreach (var yt in ytLinksObj) {
-                        <a href="@yt.Url" target="_blank" class="flex items-center gap-3 glass-card p-sm rounded-lg border border-surface-variant transition-all hover:border-primary/50 group">
+                        <a href="@yt.Url" target="_blank" class="flex items-center gap-3 glass-card p-sm rounded-[1rem] border border-surface-variant transition-all hover:border-primary/50 group">
                             <div class="text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                 <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
                             </div>
@@ -106,12 +127,13 @@
                                 <h3 class="text-on-surface font-label-md text-sm font-semibold truncate">@yt.Label</h3>
                                 <p class="text-primary/80 text-xs truncate">Watch on YouTube</p>
                             </div>
+                            <span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-50 group-hover:text-primary group-hover:opacity-100 transition-all shrink-0 sidebar-text pr-1">open_in_new</span>
                         </a>
                     }
                 </div>
                 
                 <!-- Edit Mode Links & Audio Upload -->
-                <div id="edit-links-section" class="edit-mode-el hidden flex flex-col gap-sm mb-md p-sm bg-white/5 backdrop-blur-md rounded-lg border border-surface-variant sidebar-text">
+                <div id="edit-links-section" class="edit-mode-el hidden flex flex-col gap-sm mb-md p-sm bg-white/5 backdrop-blur-md rounded-[1rem] border border-surface-variant sidebar-text">
 
 
                     <label class="font-label-sm text-on-surface-variant text-xs uppercase tracking-widest">Spotify Link</label>
@@ -136,11 +158,15 @@
             }
             @if (audioTracks.Any())
             {
-                <div class="view-mode-el p-md border-t border-outline-variant bg-transparent shrink-0 w-full">
-                    <h3 class="text-[#a0a0a0] font-bold text-[10px] tracking-[0.2em] uppercase mb-3 sidebar-text">Audio Track</h3>
-                    
-                    <div class="flex items-center gap-3 mb-3">
-                        <button onclick="toggleAudio()" id="audio-play-btn" class="w-10 h-10 flex items-center justify-center bg-primary hover:bg-primary/80 text-on-primary rounded transition-colors shadow-[0_0_10px_var(--accent-dynamic-glow,rgba(157,78,221,0.4))] shrink-0 relative overflow-hidden">
+                <div class="view-mode-el px-md py-sm shrink-0 w-full mt-auto">
+                    <div class="glass-card rounded-[1rem] border border-surface-variant overflow-hidden flex flex-col group-[.retracted]/sidebar:border-transparent group-[.retracted]/sidebar:bg-transparent">
+                        <div class="bg-white/5 px-md py-sm flex items-center gap-xs border-b border-surface-variant/50 shrink-0 group-[.retracted]/sidebar:hidden sidebar-text">
+                            <span class="material-symbols-outlined text-[18px] text-primary">headphones</span>
+                            <h3 class="text-primary font-label-md text-label-md uppercase tracking-widest">Audio Track</h3>
+                        </div>
+                        <div class="p-sm flex flex-col group-[.retracted]/sidebar:p-0 group-[.retracted]/sidebar:items-center">
+                            <div class="flex items-center gap-3 mb-3 group-[.retracted]/sidebar:mb-0">
+                                <button onclick="toggleAudio()" id="audio-play-btn" class="w-10 h-10 flex items-center justify-center bg-primary hover:bg-primary/80 text-on-primary rounded-full transition-colors shadow-[0_0_10px_var(--accent-dynamic-glow,rgba(157,78,221,0.4))] shrink-0 relative overflow-hidden">
                             <span class="material-symbols-outlined text-[24px] ml-0.5" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
                         </button>
                         <div class="flex-1 overflow-hidden sidebar-text">
@@ -204,12 +230,14 @@
                             </div>
                         </div>
                     </div>
+                        </div>
+                    </div>
                 </div>
             }
 
             <!-- Edit Mode Audio Upload & Management -->
             <div id="edit-audio-upload" class="edit-mode-el hidden p-md shrink-0 sidebar-text">
-                <div class="p-sm bg-white/5 border border-surface-variant rounded-lg">
+                <div class="p-sm bg-white/5 border border-surface-variant rounded-[1rem]">
                     @if (audioTracks.Any())
                     {
                         <div class="mb-4">
@@ -320,13 +348,13 @@
                         </div>
 
                         <!-- Lyrics Viewer Container -->
-                        <div id="lyrics-container" class="view-mode-el mt-xl font-mono-data text-body-lg"></div>
+                        <div id="lyrics-container" class="view-mode-el font-mono-data text-body-lg"></div>
                         
                         <!-- Lyrics Editor Container -->
-                        <textarea id="edit-lyrics" class="edit-mode-el hidden w-full h-[600px] mt-xl font-mono-data text-body-lg bg-transparent border-transparent focus:ring-0 focus:outline-none !border-none p-md text-on-surface resize-none" style="box-shadow: none; outline: none;" placeholder="Paste your lyrics here...">@Model.Lyrics</textarea>
+                        <textarea id="edit-lyrics" class="edit-mode-el hidden w-full h-[600px] mt-md font-mono-data text-body-lg bg-transparent border-transparent focus:ring-0 focus:outline-none !border-none p-md text-on-surface resize-none" style="box-shadow: none; outline: none;" placeholder="Paste your lyrics here...">@Model.Lyrics</textarea>
                         
                         <!-- Chord Editor Canvas -->
-                        <div id="editor-canvas" class="hidden mt-xl font-mono-data text-body-lg bg-transparent border-transparent p-md min-h-[400px]"></div>
+                        <div id="editor-canvas" class="hidden mt-md font-mono-data text-body-lg bg-transparent border-transparent p-md min-h-[400px]"></div>
                     </div>
                 </div>
 
@@ -454,6 +482,7 @@
             clearInterval(audioDelayTimeout);
             audioDelayTimeout = null;
             btn.textContent = 'play_arrow';
+            stopAutoscroll();
             return;
         }
 
@@ -477,9 +506,12 @@
                 player.play();
                 btn.textContent = 'pause';
             }
+            // Auto-start autoscroll with the same delay as audio
+            startAutoscrollAfterDelay(audioDelaySeconds);
         } else {
             player.pause();
             btn.textContent = 'play_arrow';
+            stopAutoscroll();
         }
     }
 
@@ -667,36 +699,99 @@
 
     let scrollInterval = null;
     let scrollSpeed = 1.0;
+    let autoscrollDelaySeconds = 0;
+    let autoscrollDelayTimeout = null;
 
     function updateAutoscrollSpeed(val) {
         scrollSpeed = parseFloat(val);
         document.getElementById('autoscroll-speed-label').textContent = scrollSpeed.toFixed(1);
     }
 
-    function toggleAutoscroll() {
-        const btn = document.getElementById('autoscroll-btn');
-        const icon = btn.querySelector('.material-symbols-outlined');
-        const scroller = document.querySelector('main > section'); // the main scrollable container
+    function setAutoscrollDelay(val) {
+        autoscrollDelaySeconds = val;
+        const disp = document.getElementById('autoscroll-delay-display');
+        if (disp) disp.textContent = val === 0 ? 'Off' : val + 's';
+        document.getElementById('autoscroll-delay-menu').classList.add('hidden');
+        document.getElementById('autoscroll-delay-menu').classList.remove('flex');
+        document.activeElement.blur();
+    }
 
+    function toggleAutoscrollDelayMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('autoscroll-delay-menu');
+        if (menu.classList.contains('hidden')) {
+            menu.classList.remove('hidden');
+            menu.classList.add('flex');
+        } else {
+            menu.classList.add('hidden');
+            menu.classList.remove('flex');
+        }
+    }
+
+    function stopAutoscroll() {
+        const btn = document.getElementById('autoscroll-btn');
+        const icon = btn ? btn.querySelector('.material-symbols-outlined') : null;
+
+        if (autoscrollDelayTimeout) {
+            clearInterval(autoscrollDelayTimeout);
+            autoscrollDelayTimeout = null;
+        }
         if (scrollInterval) {
             cancelAnimationFrame(scrollInterval);
             scrollInterval = null;
-            icon.textContent = 'play_arrow';
-            btn.classList.remove('text-primary');
-        } else {
-            icon.textContent = 'pause';
-            btn.classList.add('text-primary');
-            let lastTime = performance.now();
+        }
+        if (icon) icon.textContent = 'play_arrow';
+        if (btn) btn.classList.remove('text-primary');
+    }
 
-            function step(time) {
-                const delta = time - lastTime;
-                lastTime = time;
-                // scrollSpeed is roughly pixels per 50ms, so let's adjust for requestAnimationFrame (usually 16ms delta)
-                const pxPerMs = (scrollSpeed * 50) / 1000;
-                scroller.scrollBy(0, pxPerMs * delta);
-                scrollInterval = requestAnimationFrame(step);
-            }
+    function startAutoscrollAfterDelay(delaySec) {
+        const btn = document.getElementById('autoscroll-btn');
+        const icon = btn ? btn.querySelector('.material-symbols-outlined') : null;
+        const scroller = document.querySelector('main > section');
+
+        // Already running — do nothing
+        if (scrollInterval || autoscrollDelayTimeout) return;
+
+        if (delaySec > 0) {
+            let remaining = delaySec;
+            if (icon) icon.textContent = remaining;
+            if (btn) btn.classList.add('text-primary');
+
+            autoscrollDelayTimeout = setInterval(() => {
+                remaining--;
+                if (remaining > 0) {
+                    if (icon) icon.textContent = remaining;
+                } else {
+                    clearInterval(autoscrollDelayTimeout);
+                    autoscrollDelayTimeout = null;
+                    beginScrollLoop(btn, icon, scroller);
+                }
+            }, 1000);
+        } else {
+            if (btn) btn.classList.add('text-primary');
+            beginScrollLoop(btn, icon, scroller);
+        }
+    }
+
+    function beginScrollLoop(btn, icon, scroller) {
+        if (icon) icon.textContent = 'pause';
+        let lastTime = performance.now();
+
+        function step(time) {
+            const delta = time - lastTime;
+            lastTime = time;
+            const pxPerMs = (scrollSpeed * 50) / 1000;
+            scroller.scrollBy(0, pxPerMs * delta);
             scrollInterval = requestAnimationFrame(step);
+        }
+        scrollInterval = requestAnimationFrame(step);
+    }
+
+    function toggleAutoscroll() {
+        if (scrollInterval || autoscrollDelayTimeout) {
+            stopAutoscroll();
+        } else {
+            startAutoscrollAfterDelay(autoscrollDelaySeconds);
         }
     }
 
@@ -867,7 +962,16 @@
 </script>
 <style>
     /* Add specific overrides for the chord-viewer.js generated elements to match Sonic Obsidian */
+    .glass-card {
+        background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.85) 100%) !important;
+    }
     
+    .group\/sidebar.retracted .glass-card.group-\\[\\.retracted\\]\\/sidebar\\:bg-transparent {
+        background: transparent !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+    }
+
     /* Dynamic accent color — applied when cover exists */
     .accent-color {
         color: var(--accent-dynamic, var(--primary, #e0b6ff));
@@ -894,7 +998,7 @@
     .chord-name {
         color: #e5e2e1;
         font-weight: 700;
-        font-family: 'Hanken Grotesk';
+        font-family: var(--font-body);
         font-size: 14px;
         margin-bottom: 8px;
     }
@@ -992,6 +1096,7 @@
         position: absolute;
         top: 2px;
         font-weight: 700;
+        font-family: var(--font-body);
         color: #e0b6ff;
         cursor: pointer;
         background: rgba(157,78,221,0.2);
@@ -999,15 +1104,81 @@
         border-radius: 4px;
         box-shadow: 0 0 8px rgba(157,78,221,0.4);
         transition: all 0.2s;
+        user-select: none;
+        touch-action: none;
     }
     .editor-chord-item:hover {
         background: rgba(157,78,221,0.5);
         transform: scale(1.1);
     }
+    .editor-chord-item.dragging {
+        cursor: grabbing;
+        transform: scale(1.15);
+        box-shadow: 0 0 16px rgba(157,78,221,0.7);
+        z-index: 20;
+        transition: box-shadow 0.2s;
+    }
     .editor-lyric-row {
         color: #e5e2e1;
+        font-family: var(--font-body);
         font-size: 15px;
         white-space: pre;
+    }
+
+    /* ── Context menu ── */
+    .editor-context-menu {
+        background: linear-gradient(180deg, rgba(22,18,32,0.98) 0%, rgba(12,9,20,0.99) 100%);
+        border: 1px solid rgba(157,78,221,0.3);
+        border-radius: 10px;
+        padding: 6px;
+        min-width: 190px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+        backdrop-filter: blur(16px);
+        animation: ctxFadeIn 120ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @@keyframes ctxFadeIn {
+        from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .ctx-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        color: #e5e2e1;
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.12s;
+    }
+    .ctx-item:hover {
+        background: rgba(157,78,221,0.2);
+        color: #e0b6ff;
+    }
+    .ctx-item.ctx-disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+    }
+    .ctx-item.ctx-disabled:hover {
+        background: transparent;
+        color: #e5e2e1;
+    }
+    .ctx-icon {
+        font-size: 14px;
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .ctx-separator {
+        height: 1px;
+        background: rgba(255,255,255,0.08);
+        margin: 4px 8px;
     }
 
     /* Popover Styles */
